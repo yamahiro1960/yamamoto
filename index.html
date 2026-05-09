@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>案件管理システム</title>
+  <style>
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary:    #2563eb;
+      --primary-dk: #1d4ed8;
+      --secondary:  #64748b;
+      --success:    #16a34a;
+      --warning:    #d97706;
+      --danger:     #dc2626;
+      --info:       #0891b2;
+      --bg:         #f1f5f9;
+      --surface:    #ffffff;
+      --border:     #e2e8f0;
+      --text:       #1e293b;
+      --text-sub:   #64748b;
+      --sidebar-w:  240px;
+      --header-h:   64px;
+    }
+    body {
+      font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: #1e293b;
+      color: #cbd5e1;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0;
+      height: 100vh;
+      z-index: 100;
+    }
+    .sidebar-logo {
+      height: var(--header-h);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 20px;
+      border-bottom: 1px solid #334155;
+      flex-shrink: 0;
+    }
+    .sidebar-logo .logo-icon {
+      width: 36px; height: 36px;
+      background: var(--primary);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .sidebar-logo span { font-size: 15px; font-weight: 700; color: #f1f5f9; }
+    .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+    .nav-section-label {
+      font-size: 11px; font-weight: 600;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding: 12px 20px 6px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 20px;
+      cursor: pointer;
+      border-radius: 0;
+      transition: background .15s;
+      font-size: 14px;
+      color: #94a3b8;
+      text-decoration: none;
+    }
+    .nav-item:hover { background: #334155; color: #f1f5f9; }
+    .nav-item.active { background: #1d4ed8; color: #fff; }
+    .nav-item .nav-icon { font-size: 18px; width: 22px; text-align: center; flex-shrink: 0; }
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid #334155;
+      font-size: 13px;
+    }
+    .user-info { display: flex; align-items: center; gap: 10px; }
+    .user-avatar {
+      width: 34px; height: 34px;
+      background: var(--primary);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; color: #fff; font-size: 13px; flex-shrink: 0;
+    }
+    .user-name { font-weight: 600; color: #f1f5f9; font-size: 13px; }
+    .user-role { color: #64748b; font-size: 11px; }
+
+    /* ===== Main layout ===== */
+    .main-wrapper {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ===== Header ===== */
+    .header {
+      height: var(--header-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      position: sticky; top: 0; z-index: 50;
+    }
+    .header-title { font-size: 18px; font-weight: 700; }
+    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .auth-panel {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .auth-panel input {
+      width: 210px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      background: var(--surface);
+    }
+    .auth-panel input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+    .auth-hint {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-left: 4px;
+    }
+    .auth-status {
+      font-size: 12px;
+      color: var(--text-sub);
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      padding: 6px 10px;
+      white-space: nowrap;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px; font-weight: 500;
+      border: none; cursor: pointer;
+      transition: background .15s, box-shadow .15s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dk); box-shadow: 0 2px 8px rgba(37,99,235,.3); }
+    .btn-ghost { background: transparent; color: var(--text-sub); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--bg); }
+
+    /* ===== Page content ===== */
+    .page { padding: 28px; flex: 1; }
+
+    /* ===== KPI Cards ===== */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .kpi-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 8px;
+      transition: box-shadow .15s;
+    }
+    .kpi-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+    .kpi-label { font-size: 13px; color: var(--text-sub); display: flex; align-items: center; gap: 6px; }
+    .kpi-value { font-size: 32px; font-weight: 700; line-height: 1; }
+    .kpi-sub  { font-size: 12px; color: var(--text-sub); }
+    .kpi-bar  { height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
+    .kpi-bar-fill { height: 100%; border-radius: 2px; }
+
+    /* ===== Toolbar ===== */
+    .toolbar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .search-box {
+      flex: 1; min-width: 200px;
+      display: flex; align-items: center;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      gap: 8px;
+    }
+    .search-box input {
+      border: none; background: transparent; outline: none;
+      font-size: 14px; color: var(--text); flex: 1;
+    }
+    .search-box input::placeholder { color: var(--text-sub); }
+    .filter-select {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      font-size: 14px; color: var(--text);
+      cursor: pointer; outline: none;
+    }
+    .filter-select:focus { border-color: var(--primary); }
+
+    /* ===== Table ===== */
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .table-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .table-header h2 { font-size: 15px; font-weight: 600; }
+    .count-badge {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      text-align: left;
+      font-size: 12px; font-weight: 600;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding: 12px 16px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    thead th:first-child { padding-left: 20px; }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .1s;
+      cursor: pointer;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f8fafc; }
+    tbody td {
+      padding: 14px 16px;
+      font-size: 14px;
+      vertical-align: middle;
+    }
+    tbody td:first-child { padding-left: 20px; }
+
+    /* ===== Status badges ===== */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px; font-weight: 500;
+      white-space: nowrap;
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .badge-inprogress  { background: #dbeafe; color: #1d4ed8; }
+    .badge-inprogress  .badge-dot { background: #2563eb; }
+    .badge-completed   { background: #dcfce7; color: #15803d; }
+    .badge-completed   .badge-dot { background: #16a34a; }
+    .badge-pending     { background: #fef9c3; color: #a16207; }
+    .badge-pending     .badge-dot { background: #ca8a04; }
+    .badge-cancelled   { background: #fee2e2; color: #b91c1c; }
+    .badge-cancelled   .badge-dot { background: #dc2626; }
+    .badge-new         { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .badge-new         .badge-dot { background: #22c55e; }
+
+    /* Priority */
+    .priority { font-size: 13px; font-weight: 600; }
+    .priority-high   { color: var(--danger); }
+    .priority-medium { color: var(--warning); }
+    .priority-low    { color: var(--success); }
+
+    /* ===== Action menu ===== */
+    .action-btn {
+      background: transparent; border: none; cursor: pointer;
+      color: var(--text-sub); font-size: 18px; padding: 4px 8px;
+      border-radius: 6px; line-height: 1;
+    }
+    .action-btn:hover { background: var(--bg); color: var(--text); }
+
+    /* ===== Pagination ===== */
+    .pagination {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      font-size: 13px; color: var(--text-sub);
+    }
+    .page-btns { display: flex; gap: 4px; }
+    .page-btn {
+      width: 32px; height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 6px; background: var(--surface);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 13px;
+      transition: background .1s;
+    }
+    .page-btn:hover { background: var(--bg); }
+    .page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* ===== Modal ===== */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200;
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+    .modal {
+      background: var(--surface);
+      border-radius: 16px;
+      width: 560px; max-width: 95vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      transform: translateY(20px);
+      transition: transform .2s;
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-head {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-head h3 { font-size: 17px; font-weight: 700; }
+    .close-btn {
+      width: 32px; height: 32px; border-radius: 8px;
+      border: none; background: var(--bg); cursor: pointer;
+      font-size: 18px; display: flex; align-items: center; justify-content: center;
+    }
+    .close-btn:hover { background: var(--border); }
+    .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 13px; font-weight: 600; color: var(--text); }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px; font-family: inherit;
+      outline: none; transition: border-color .15s;
+      background: var(--surface);
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .modal-foot {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: flex-end; gap: 10px;
+    }
+    .sub-modal {
+      width: 860px;
+      max-width: 96vw;
+    }
+    .timeline-layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .timeline-form,
+    .timeline-list {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #f8fafc;
+      padding: 14px;
+    }
+    .timeline-list {
+      max-height: 56vh;
+      overflow-y: auto;
+      background: var(--surface);
+    }
+    .timeline-title {
+      font-size: 13px;
+      color: var(--text-sub);
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    .timeline-item {
+      border-left: 3px solid #bfdbfe;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      background: #f8fafc;
+      border-radius: 8px;
+    }
+    .timeline-item-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .timeline-item-title { font-weight: 700; font-size: 14px; }
+    .timeline-meta { font-size: 12px; color: var(--text-sub); }
+    .timeline-item-detail { font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+    .timeline-links {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .timeline-links a {
+      font-size: 12px;
+      color: #1d4ed8;
+      text-decoration: none;
+      border: 1px solid #bfdbfe;
+      background: #eff6ff;
+      padding: 4px 8px;
+      border-radius: 999px;
+    }
+    .timeline-links a:hover { background: #dbeafe; }
+    .work-status {
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+    .work-status-notstarted { background: #f1f5f9; color: #475569; }
+    .work-status-progress { background: #dbeafe; color: #1d4ed8; }
+    .work-status-done { background: #dcfce7; color: #15803d; }
+    .work-status-hold { background: #fef9c3; color: #a16207; }
+    .map-preview {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+    .map-preview iframe {
+      width: 100%;
+      height: 220px;
+      border: 0;
+      display: block;
+    }
+    .map-preview-actions {
+      padding: 10px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      background: #f8fafc;
+    }
+    .timeline-empty {
+      text-align: center;
+      color: var(--text-sub);
+      font-size: 13px;
+      padding: 24px 10px;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+    }
+
+    /* ===== Toast ===== */
+    .toast {
+      position: fixed; bottom: 28px; right: 28px;
+      background: #1e293b; color: #fff;
+      padding: 12px 18px; border-radius: 10px;
+      font-size: 14px; display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.25);
+      transform: translateY(80px); opacity: 0;
+      transition: transform .3s, opacity .3s;
+      z-index: 300;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast-icon { font-size: 18px; }
+
+    .auth-banner {
+      background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .auth-banner strong { font-size: 14px; }
+    .auth-banner p { color: var(--text-sub); font-size: 13px; margin-top: 4px; }
+    .auth-banner-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 900px) {
+      .timeline-layout { grid-template-columns: 1fr; }
+    }
+
+    /* ===== Scrollbar ===== */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- ===== Sidebar ===== -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">📋</div>
+    <span>案件管理</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">メニュー</div>
+    <a class="nav-item active" href="#">
+      <span class="nav-icon">🏠</span> ダッシュボード
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">📁</span> 案件一覧
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">👥</span> 顧客管理
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">📅</span> スケジュール
+    </a>
+    <div class="nav-section-label">レポート</div>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">📊</span> 分析・レポート
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">📤</span> エクスポート
+    </a>
+    <div class="nav-section-label">設定</div>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">⚙️</span> システム設定
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-info">
+      <div class="user-avatar">山</div>
+      <div>
+        <div class="user-name">山本 太郎</div>
+        <div class="user-role">管理者</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ===== Main ===== -->
+<div class="main-wrapper">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-title">ダッシュボード</div>
+    <div class="header-actions">
+      <button class="btn btn-ghost" id="exportBtn">⬇ エクスポート</button>
+      <button class="btn btn-primary" id="openModalBtn">＋ 新規案件登録</button>
+    </div>
+  </header>
+
+  <!-- Page -->
+  <main class="page">
+
+    <!-- KPI -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">📁 総案件数</div>
+        <div class="kpi-value" id="kpiTotal">0</div>
+        <div class="kpi-sub">今月 +3件</div>
+        <div class="kpi-bar"><div class="kpi-bar-fill" style="background:#2563eb;width:100%"></div></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">🔵 進行中</div>
+        <div class="kpi-value" id="kpiInProgress" style="color:#2563eb">0</div>
+        <div class="kpi-sub" id="kpiInProgressPct"></div>
+        <div class="kpi-bar"><div class="kpi-bar-fill" id="barInProgress" style="background:#2563eb"></div></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">✅ 完了</div>
+        <div class="kpi-value" id="kpiCompleted" style="color:#16a34a">0</div>
+        <div class="kpi-sub" id="kpiCompletedPct"></div>
+        <div class="kpi-bar"><div class="kpi-bar-fill" id="barCompleted" style="background:#16a34a"></div></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">⏸ 保留</div>
+        <div class="kpi-value" id="kpiPending" style="color:#d97706">0</div>
+        <div class="kpi-sub" id="kpiPendingPct"></div>
+        <div class="kpi-bar"><div class="kpi-bar-fill" id="barPending" style="background:#d97706"></div></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">❌ キャンセル</div>
+        <div class="kpi-value" id="kpiCancelled" style="color:#dc2626">0</div>
+        <div class="kpi-sub" id="kpiCancelledPct"></div>
+        <div class="kpi-bar"><div class="kpi-bar-fill" id="barCancelled" style="background:#dc2626"></div></div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="search-box">
+        <span>🔍</span>
+        <input type="text" id="searchInput" placeholder="案件名・顧客名・担当者で検索…" />
+      </div>
+      <select class="filter-select" id="statusFilter">
+        <option value="">すべてのステータス</option>
+        <option value="進行中">進行中</option>
+        <option value="完了">完了</option>
+        <option value="保留">保留</option>
+        <option value="キャンセル">キャンセル</option>
+        <option value="新規">新規</option>
+      </select>
+      <select class="filter-select" id="priorityFilter">
+        <option value="">すべての優先度</option>
+        <option value="高">高</option>
+        <option value="中">中</option>
+        <option value="低">低</option>
+      </select>
+      <select class="filter-select" id="sortSelect">
+        <option value="id_desc">登録日（新しい順）</option>
+        <option value="id_asc">登録日（古い順）</option>
+        <option value="name_asc">案件名（昇順）</option>
+        <option value="deadline_asc">期限（近い順）</option>
+      </select>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card">
+      <div class="table-header">
+        <h2>案件一覧</h2>
+        <span class="count-badge" id="countBadge">0 件</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>案件ID</th>
+              <th>案件名</th>
+              <th>顧客名</th>
+              <th>担当者</th>
+              <th>ステータス</th>
+              <th>作業</th>
+              <th>優先度</th>
+              <th>場所</th>
+              <th>期限</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <span id="pageInfo"></span>
+        <div class="page-btns" id="pageBtns"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ===== Modal ===== -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">新規案件登録</h3>
+      <button class="close-btn" id="closeModalBtn">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>案件名 <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="fName" placeholder="例：〇〇システム開発" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>顧客名 <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="fClient" placeholder="例：株式会社○○" />
+        </div>
+        <div class="form-group">
+          <label>担当者</label>
+          <input type="text" id="fAssignee" placeholder="例：鈴木 一郎" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ステータス</label>
+          <select id="fStatus">
+            <option value="新規">新規</option>
+            <option value="進行中">進行中</option>
+            <option value="保留">保留</option>
+            <option value="完了">完了</option>
+            <option value="キャンセル">キャンセル</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>作業ステータス</label>
+          <select id="fWorkStatus">
+            <option value="未着手">未着手</option>
+            <option value="進行中">進行中</option>
+            <option value="完了">完了</option>
+            <option value="保留">保留</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>優先度</label>
+          <select id="fPriority">
+            <option value="高">高</option>
+            <option value="中" selected>中</option>
+            <option value="低">低</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>開始日</label>
+          <input type="date" id="fStartDate" />
+        </div>
+        <div class="form-group">
+          <label>期限</label>
+          <input type="date" id="fDeadline" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>場所（住所）</label>
+        <input type="text" id="fLocationAddress" placeholder="例：高知県高知市○○" />
+      </div>
+      <div class="form-group">
+        <label>緯度経度</label>
+        <input type="text" id="fLatLng" placeholder="例：33.602854890963705, 133.6327713249019" />
+      </div>
+      <div class="form-group">
+        <label>地図URL（任意）</label>
+        <input type="url" id="fMapUrl" placeholder="https://maps.google.com/..." />
+      </div>
+      <div class="map-preview hidden" id="caseMapPreviewWrap">
+        <iframe id="caseMapIframe" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        <div class="map-preview-actions">
+          <a class="btn btn-ghost" id="caseMapOpenLink" target="_blank" rel="noopener noreferrer">地図を開く</a>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>写真URL</label>
+          <input type="url" id="fPhotoUrl" placeholder="https://..." />
+        </div>
+        <div class="form-group">
+          <label>添付ファイルURL</label>
+          <input type="url" id="fAttachmentUrl" placeholder="https://..." />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備考</label>
+        <textarea id="fNote" placeholder="案件に関するメモや詳細を入力してください"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost hidden" id="openTimelineBtn">実施履歴</button>
+      <button class="btn btn-ghost" id="cancelModalBtn">キャンセル</button>
+      <button class="btn btn-primary" id="saveBtn">登録する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Timeline Sub Modal ===== -->
+<div class="modal-overlay" id="timelineOverlay">
+  <div class="modal sub-modal">
+    <div class="modal-head">
+      <h3 id="timelineTitle">案件実施履歴</h3>
+      <button class="close-btn" id="closeTimelineBtn">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="timeline-layout">
+        <div class="timeline-form">
+          <div class="timeline-title">履歴を追加</div>
+          <div class="form-group">
+            <label>実施日 <span style="color:var(--danger)">*</span></label>
+            <input type="date" id="tPerformedOn" />
+          </div>
+          <div class="form-group">
+            <label>タイトル <span style="color:var(--danger)">*</span></label>
+            <input type="text" id="tTitle" placeholder="例：現地確認を実施" />
+          </div>
+          <div class="form-group">
+            <label>実施者</label>
+            <input type="text" id="tAuthor" placeholder="例：高橋 幸夫" />
+          </div>
+          <div class="form-group">
+            <label>作業ステータス</label>
+            <select id="tWorkStatus">
+              <option value="未着手">未着手</option>
+              <option value="進行中">進行中</option>
+              <option value="完了">完了</option>
+              <option value="保留">保留</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>写真URL</label>
+            <input type="url" id="tPhotoUrl" placeholder="https://..." />
+          </div>
+          <div class="form-group">
+            <label>添付ファイルURL</label>
+            <input type="url" id="tAttachmentUrl" placeholder="https://..." />
+          </div>
+          <div class="form-group">
+            <label>内容</label>
+            <textarea id="tDetail" placeholder="実施内容を入力"></textarea>
+          </div>
+          <button class="btn btn-primary" id="addTimelineBtn">履歴を保存</button>
+        </div>
+        <div class="timeline-list">
+          <div class="timeline-title">時系列履歴</div>
+          <div id="timelineList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toastIcon">✅</span>
+  <span id="toastMsg"></span>
+</div>
+
+<!-- Supabase JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+  // ===== Supabase 設定 =====
+  const SUPABASE_URL      = 'https://vspmaejoftjvooohfqbu.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcG1hZWpvZnRqdm9vb2hmcWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODkxODQsImV4cCI6MjA5Mzg2NTE4NH0.vt33TF7OfmNHOMFUP-_Ch6TESVBPW22d-1W3LKkbrHI';
+
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ===== State =====
+  let cases = [];
+  let activities = [];
+  let editingId = null;
+  let timelineCaseId = null;
+  const PAGE_SIZE = 8;
+  let currentPage = 1;
+
+  // ===== Helpers =====
+  const statusClass  = { '進行中': 'inprogress', '完了': 'completed', '保留': 'pending', 'キャンセル': 'cancelled', '新規': 'new' };
+  const priorityClass = { '高': 'high', '中': 'medium', '低': 'low' };
+  const workStatusClass = { '未着手': 'notstarted', '進行中': 'progress', '完了': 'done', '保留': 'hold' };
+
+  function statusBadge(s) {
+    const cls = statusClass[s] || 'inprogress';
+    return `<span class="badge badge-${cls}"><span class="badge-dot"></span>${s}</span>`;
+  }
+  function priorityBadge(p) {
+    const cls = priorityClass[p] || 'medium';
+    return `<span class="priority priority-${cls}">${p === '高' ? '▲ 高' : p === '中' ? '─ 中' : '▽ 低'}</span>`;
+  }
+  function fmtId(id) {
+    return 'A-' + String(id).padStart(3, '0');
+  }
+  function parseNullableNumber(raw) {
+    if (raw === '' || raw == null) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+  function parseLatLngPair(raw) {
+    const text = (raw || '').trim();
+    if (!text) {
+      return { isValid: true, latitude: null, longitude: null };
+    }
+    const parts = text.split(',').map(v => v.trim()).filter(Boolean);
+    if (parts.length !== 2) {
+      return { isValid: false, latitude: null, longitude: null };
+    }
+    const latitude = Number(parts[0]);
+    const longitude = Number(parts[1]);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return { isValid: false, latitude: null, longitude: null };
+    }
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      return { isValid: false, latitude: null, longitude: null };
+    }
+    return { isValid: true, latitude, longitude };
+  }
+  function buildCaseMapQuery(c) {
+    if (c.location_address) return c.location_address;
+    if (c.latitude != null && c.longitude != null) return `${c.latitude},${c.longitude}`;
+    return '';
+  }
+  function buildCaseMapLink(c) {
+    if (c.map_url) return c.map_url;
+    const q = buildCaseMapQuery(c);
+    return q ? `https://www.google.com/maps?q=${encodeURIComponent(q)}` : '';
+  }
+  function buildCaseMapEmbed(c) {
+    if (c.map_url && c.map_url.includes('output=embed')) return c.map_url;
+    const q = buildCaseMapQuery(c);
+    return q ? `https://www.google.com/maps?q=${encodeURIComponent(q)}&output=embed` : '';
+  }
+  function refreshCaseMapPreview() {
+    const latLng = parseLatLngPair(document.getElementById('fLatLng').value);
+    const draft = {
+      map_url: document.getElementById('fMapUrl').value.trim(),
+      location_address: document.getElementById('fLocationAddress').value.trim(),
+      latitude: latLng.latitude,
+      longitude: latLng.longitude,
+    };
+    const embed = buildCaseMapEmbed(draft);
+    const link = buildCaseMapLink(draft);
+    const wrap = document.getElementById('caseMapPreviewWrap');
+    if (!embed || !link) {
+      wrap.classList.add('hidden');
+      return;
+    }
+    wrap.classList.remove('hidden');
+    document.getElementById('caseMapIframe').src = embed;
+    document.getElementById('caseMapOpenLink').href = link;
+  }
+  function openCaseMap(id) {
+    const c = cases.find(x => x.id === id);
+    if (!c) return;
+    const link = buildCaseMapLink(c);
+    if (!link) {
+      showToast('⚠️', '場所情報または地図URLが未設定です');
+      return;
+    }
+    window.open(link, '_blank', 'noopener');
+  }
+
+  function requireAuth() {
+    return true;
+  }
+
+  // ===== Supabase CRUD =====
+  async function loadCases() {
+    setTableLoading(true);
+    const { data, error } = await db
+      .from('cases')
+      .select('*')
+      .order('created_at', { ascending: false });
+    setTableLoading(false);
+    if (error) {
+      showToast('❌', 'データ取得に失敗しました: ' + error.message);
+      return;
+    }
+    cases = data || [];
+    render();
+  }
+
+  async function insertCase(payload) {
+    if (!requireAuth()) return false;
+    const { error } = await db.from('cases').insert([payload]);
+    if (error) { showToast('❌', '登録に失敗しました: ' + error.message); return false; }
+    return true;
+  }
+
+  async function updateCase(id, payload) {
+    if (!requireAuth()) return false;
+    const { error } = await db.from('cases').update(payload).eq('id', id);
+    if (error) { showToast('❌', '更新に失敗しました: ' + error.message); return false; }
+    return true;
+  }
+
+  async function deleteFromDB(id) {
+    if (!requireAuth()) return false;
+    const { error } = await db.from('cases').delete().eq('id', id);
+    if (error) { showToast('❌', '削除に失敗しました: ' + error.message); return false; }
+    return true;
+  }
+
+  async function loadActivities(caseId) {
+    const { data, error } = await db
+      .from('case_activities')
+      .select('*')
+      .eq('case_id', caseId)
+      .order('performed_on', { ascending: false })
+      .order('created_at', { ascending: false });
+    if (error) {
+      showToast('❌', '履歴取得に失敗しました: ' + error.message);
+      return false;
+    }
+    activities = data || [];
+    renderActivities();
+    return true;
+  }
+
+  async function insertActivity(payload) {
+    const { error } = await db.from('case_activities').insert([payload]);
+    if (error) { showToast('❌', '履歴保存に失敗しました: ' + error.message); return false; }
+    return true;
+  }
+
+  async function deleteActivity(id) {
+    const { error } = await db.from('case_activities').delete().eq('id', id);
+    if (error) { showToast('❌', '履歴削除に失敗しました: ' + error.message); return false; }
+    return true;
+  }
+
+  // ===== Loading states =====
+  function setTableLoading(loading) {
+    if (loading) {
+      document.getElementById('tableBody').innerHTML =
+        `<tr><td colspan="10" style="text-align:center;color:var(--text-sub);padding:40px">⏳ 読み込み中…</td></tr>`;
+    }
+  }
+  function setSaveLoading(loading) {
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = loading;
+    btn.textContent = loading ? '処理中…' : (editingId ? '更新する' : '登録する');
+  }
+
+  // ===== Filter & sort (クライアントサイド) =====
+  function filtered() {
+    const q   = document.getElementById('searchInput').value.toLowerCase();
+    const st  = document.getElementById('statusFilter').value;
+    const pr  = document.getElementById('priorityFilter').value;
+    const srt = document.getElementById('sortSelect').value;
+    let list = cases.filter(c => {
+      const matchQ  = !q  || [c.name, c.client, c.assignee].some(v => (v || '').toLowerCase().includes(q));
+      const matchQLocation = !q || (c.location_address || '').toLowerCase().includes(q);
+      const matchSt = !st || c.status === st;
+      const matchPr = !pr || c.priority === pr;
+      return (matchQ || matchQLocation) && matchSt && matchPr;
+    });
+    list = list.slice().sort((a, b) => {
+      if (srt === 'id_asc')       return a.id - b.id;
+      if (srt === 'name_asc')     return (a.name || '').localeCompare(b.name || '');
+      if (srt === 'deadline_asc') return (a.deadline || '').localeCompare(b.deadline || '');
+      return b.id - a.id; // id_desc default
+    });
+    return list;
+  }
+
+  // ===== Render =====
+  function render() {
+    updateKPI();
+    renderTable();
+  }
+
+  function updateKPI() {
+    const total = cases.length;
+    const inp   = cases.filter(c => c.status === '進行中').length;
+    const comp  = cases.filter(c => c.status === '完了').length;
+    const pend  = cases.filter(c => c.status === '保留').length;
+    const canc  = cases.filter(c => c.status === 'キャンセル').length;
+    const pct = v => total ? Math.round(v / total * 100) : 0;
+    document.getElementById('kpiTotal').textContent      = total;
+    document.getElementById('kpiInProgress').textContent = inp;
+    document.getElementById('kpiCompleted').textContent  = comp;
+    document.getElementById('kpiPending').textContent    = pend;
+    document.getElementById('kpiCancelled').textContent  = canc;
+    document.getElementById('kpiInProgressPct').textContent = `全体の ${pct(inp)}%`;
+    document.getElementById('kpiCompletedPct').textContent  = `全体の ${pct(comp)}%`;
+    document.getElementById('kpiPendingPct').textContent    = `全体の ${pct(pend)}%`;
+    document.getElementById('kpiCancelledPct').textContent  = `全体の ${pct(canc)}%`;
+    document.getElementById('barInProgress').style.width = pct(inp)  + '%';
+    document.getElementById('barCompleted').style.width  = pct(comp) + '%';
+    document.getElementById('barPending').style.width    = pct(pend) + '%';
+    document.getElementById('barCancelled').style.width  = pct(canc) + '%';
+  }
+
+  function renderTable() {
+    const list  = filtered();
+    const total = list.length;
+    const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    if (currentPage > pages) currentPage = pages;
+    const slice = list.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+    document.getElementById('countBadge').textContent = total + ' 件';
+    document.getElementById('pageInfo').textContent = total === 0
+      ? '0 件'
+      : `${total} 件中 ${Math.min((currentPage - 1) * PAGE_SIZE + 1, total)}–${Math.min(currentPage * PAGE_SIZE, total)} 件表示`;
+
+    const tbody = document.getElementById('tableBody');
+    if (slice.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-sub);padding:40px">該当する案件が見つかりません</td></tr>`;
+    } else {
+      tbody.innerHTML = slice.map(c => `
+        <tr onclick="openEdit(${c.id})">
+          <td><code style="font-size:12px;color:var(--text-sub)">${fmtId(c.id)}</code></td>
+          <td><strong>${c.name}</strong></td>
+          <td>${c.client}</td>
+          <td>${c.assignee || '—'}</td>
+          <td>${statusBadge(c.status)}</td>
+          <td><span class="work-status work-status-${workStatusClass[c.work_status] || 'notstarted'}">${c.work_status || '未着手'}</span></td>
+          <td>${priorityBadge(c.priority)}</td>
+          <td>${c.location_address || '—'}</td>
+          <td>${c.deadline || '—'}</td>
+          <td onclick="event.stopPropagation()">
+            <button class="action-btn" onclick="openCaseMap(${c.id})" title="地図を開く">📍</button>
+            <button class="action-btn" onclick="openTimeline(${c.id})" title="実施履歴">🕒</button>
+            <button class="action-btn" onclick="deleteCase(${c.id})" title="削除">🗑</button>
+          </td>
+        </tr>`).join('');
+    }
+
+    // Pagination
+    const pb = document.getElementById('pageBtns');
+    pb.innerHTML = '';
+    for (let i = 1; i <= pages; i++) {
+      const btn = document.createElement('div');
+      btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
+      btn.textContent = i;
+      btn.onclick = () => { currentPage = i; renderTable(); };
+      pb.appendChild(btn);
+    }
+  }
+
+  // ===== Modal =====
+  function openModal(reset = true) {
+    if (!requireAuth()) return;
+    if (reset) {
+      editingId = null;
+      timelineCaseId = null;
+      document.getElementById('modalTitle').textContent = '新規案件登録';
+      document.getElementById('saveBtn').textContent = '登録する';
+      document.getElementById('openTimelineBtn').classList.add('hidden');
+      ['fName', 'fClient', 'fAssignee', 'fStartDate', 'fDeadline', 'fNote', 'fPhotoUrl', 'fAttachmentUrl', 'fLocationAddress', 'fLatLng', 'fMapUrl'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('fStatus').value   = '新規';
+      document.getElementById('fWorkStatus').value = '未着手';
+      document.getElementById('fPriority').value = '中';
+      refreshCaseMapPreview();
+    }
+    document.getElementById('modalOverlay').classList.add('open');
+  }
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+
+  function openEdit(id) {
+    const c = cases.find(x => x.id === id);
+    if (!c) return;
+    editingId = id;
+    timelineCaseId = id;
+    document.getElementById('modalTitle').textContent = '案件編集';
+    document.getElementById('saveBtn').textContent = '更新する';
+    document.getElementById('openTimelineBtn').classList.remove('hidden');
+    document.getElementById('fName').value      = c.name;
+    document.getElementById('fClient').value    = c.client;
+    document.getElementById('fAssignee').value  = c.assignee || '';
+    document.getElementById('fStatus').value    = c.status;
+    document.getElementById('fWorkStatus').value = c.work_status || '未着手';
+    document.getElementById('fPriority').value  = c.priority;
+    document.getElementById('fPhotoUrl').value  = c.photo_url || '';
+    document.getElementById('fAttachmentUrl').value = c.attachment_url || '';
+    document.getElementById('fLocationAddress').value = c.location_address || '';
+    document.getElementById('fLatLng').value = (c.latitude != null && c.longitude != null)
+      ? `${c.latitude}, ${c.longitude}`
+      : '';
+    document.getElementById('fMapUrl').value = c.map_url || '';
+    document.getElementById('fDeadline').value  = c.deadline || '';
+    document.getElementById('fNote').value      = c.note || '';
+    refreshCaseMapPreview();
+    openModal(false);
+  }
+
+  async function openTimeline(caseId) {
+    const c = cases.find(x => x.id === caseId);
+    if (!c) return;
+    timelineCaseId = caseId;
+    document.getElementById('timelineTitle').textContent = `案件実施履歴: ${c.name}`;
+    document.getElementById('tPerformedOn').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('tTitle').value = '';
+    document.getElementById('tAuthor').value = c.assignee || '';
+    document.getElementById('tWorkStatus').value = '未着手';
+    document.getElementById('tPhotoUrl').value = '';
+    document.getElementById('tAttachmentUrl').value = '';
+    document.getElementById('tDetail').value = '';
+    document.getElementById('timelineOverlay').classList.add('open');
+    await loadActivities(caseId);
+  }
+
+  function closeTimeline() {
+    document.getElementById('timelineOverlay').classList.remove('open');
+  }
+
+  function renderActivities() {
+    const container = document.getElementById('timelineList');
+    if (!activities.length) {
+      container.innerHTML = '<div class="timeline-empty">まだ履歴がありません</div>';
+      return;
+    }
+    container.innerHTML = activities.map(item => `
+      <div class="timeline-item">
+        <div class="timeline-item-head">
+          <div class="timeline-item-title">${item.title}</div>
+          <span class="work-status work-status-${workStatusClass[item.work_status] || 'notstarted'}">${item.work_status || '未着手'}</span>
+          <button class="action-btn" onclick="removeTimeline(${item.id})" title="削除">🗑</button>
+        </div>
+        <div class="timeline-meta">${item.performed_on} / ${item.author || '未設定'}</div>
+        <div class="timeline-item-detail">${item.detail || ''}</div>
+        <div class="timeline-links">
+          ${item.photo_url ? `<a href="${item.photo_url}" target="_blank" rel="noopener noreferrer">写真を開く</a>` : ''}
+          ${item.attachment_url ? `<a href="${item.attachment_url}" target="_blank" rel="noopener noreferrer">添付を開く</a>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function addTimelineEntry() {
+    if (!timelineCaseId) return;
+    const performedOn = document.getElementById('tPerformedOn').value;
+    const title = document.getElementById('tTitle').value.trim();
+    const author = document.getElementById('tAuthor').value.trim() || '未設定';
+    const workStatus = document.getElementById('tWorkStatus').value;
+    const photoUrl = document.getElementById('tPhotoUrl').value.trim();
+    const attachmentUrl = document.getElementById('tAttachmentUrl').value.trim();
+    const detail = document.getElementById('tDetail').value.trim();
+
+    if (!performedOn || !title) {
+      showToast('⚠️', '実施日とタイトルは必須です');
+      return;
+    }
+
+    const ok = await insertActivity({
+      case_id: timelineCaseId,
+      performed_on: performedOn,
+      title,
+      author,
+      work_status: workStatus,
+      photo_url: photoUrl,
+      attachment_url: attachmentUrl,
+      detail,
+    });
+    if (!ok) return;
+
+    showToast('✅', '履歴を保存しました');
+    document.getElementById('tTitle').value = '';
+    document.getElementById('tPhotoUrl').value = '';
+    document.getElementById('tAttachmentUrl').value = '';
+    document.getElementById('tDetail').value = '';
+    await loadActivities(timelineCaseId);
+  }
+
+  async function removeTimeline(id) {
+    if (!confirm('この履歴を削除しますか？')) return;
+    const ok = await deleteActivity(id);
+    if (!ok) return;
+    showToast('🗑', '履歴を削除しました');
+    await loadActivities(timelineCaseId);
+  }
+
+  async function saveCase() {
+    if (!requireAuth()) return;
+    const name   = document.getElementById('fName').value.trim();
+    const client = document.getElementById('fClient').value.trim();
+    if (!name || !client) { showToast('⚠️', '案件名と顧客名は必須です'); return; }
+    const latLng = parseLatLngPair(document.getElementById('fLatLng').value);
+    if (!latLng.isValid) {
+      showToast('⚠️', '緯度経度は「緯度, 経度」の形式で入力してください');
+      return;
+    }
+
+    const payload = {
+      name,
+      client,
+      assignee: document.getElementById('fAssignee').value.trim() || '未割当',
+      status:   document.getElementById('fStatus').value,
+      work_status: document.getElementById('fWorkStatus').value,
+      priority: document.getElementById('fPriority').value,
+      photo_url: document.getElementById('fPhotoUrl').value.trim(),
+      attachment_url: document.getElementById('fAttachmentUrl').value.trim(),
+      location_address: document.getElementById('fLocationAddress').value.trim(),
+      latitude: latLng.latitude,
+      longitude: latLng.longitude,
+      map_url: document.getElementById('fMapUrl').value.trim(),
+      deadline: document.getElementById('fDeadline').value || null,
+      note:     document.getElementById('fNote').value.trim(),
+    };
+
+    setSaveLoading(true);
+    let ok;
+    if (editingId) {
+      ok = await updateCase(editingId, payload);
+      if (ok) showToast('✅', '案件を更新しました');
+    } else {
+      ok = await insertCase(payload);
+      if (ok) showToast('✅', '新規案件を登録しました');
+    }
+    setSaveLoading(false);
+    if (ok) {
+      closeModal();
+      currentPage = 1;
+      await loadCases();
+    }
+  }
+
+  async function deleteCase(id) {
+    if (!confirm('この案件を削除しますか？')) return;
+    const ok = await deleteFromDB(id);
+    if (ok) {
+      showToast('🗑', '案件を削除しました');
+      await loadCases();
+    }
+  }
+
+  // ===== Toast =====
+  function showToast(icon, msg) {
+    const t = document.getElementById('toast');
+    document.getElementById('toastIcon').textContent = icon;
+    document.getElementById('toastMsg').textContent  = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  // ===== Export (CSV) =====
+  function exportCSV() {
+    const header = ['案件ID', '案件名', '顧客名', '担当者', 'ステータス', '作業ステータス', '優先度', '場所', '緯度', '経度', '地図URL', '写真URL', '添付ファイルURL', '期限', '備考'];
+    const rows   = cases.map(c => [
+      fmtId(c.id),
+      c.name,
+      c.client,
+      c.assignee,
+      c.status,
+      c.work_status || '',
+      c.priority,
+      c.location_address || '',
+      c.latitude ?? '',
+      c.longitude ?? '',
+      c.map_url || '',
+      c.photo_url || '',
+      c.attachment_url || '',
+      c.deadline || '',
+      c.note || ''
+    ]);
+    const csv    = [header, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const bom    = '\uFEFF';
+    const blob   = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement('a'); a.href = url; a.download = '案件一覧.csv'; a.click();
+    URL.revokeObjectURL(url);
+    showToast('⬇', 'CSVをエクスポートしました');
+  }
+
+  // ===== Event listeners =====
+  document.getElementById('openModalBtn').onclick   = () => openModal(true);
+  document.getElementById('closeModalBtn').onclick  = closeModal;
+  document.getElementById('cancelModalBtn').onclick = closeModal;
+  document.getElementById('openTimelineBtn').onclick = () => openTimeline(timelineCaseId);
+  document.getElementById('closeTimelineBtn').onclick = closeTimeline;
+  document.getElementById('addTimelineBtn').onclick = addTimelineEntry;
+  document.getElementById('saveBtn').onclick        = saveCase;
+  document.getElementById('exportBtn').onclick      = exportCSV;
+  document.getElementById('modalOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modalOverlay')) closeModal();
+  });
+  document.getElementById('timelineOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('timelineOverlay')) closeTimeline();
+  });
+  ['searchInput', 'statusFilter', 'priorityFilter', 'sortSelect'].forEach(id => {
+    document.getElementById(id).addEventListener('input',  () => { currentPage = 1; renderTable(); });
+    document.getElementById(id).addEventListener('change', () => { currentPage = 1; renderTable(); });
+  });
+  ['fLocationAddress', 'fLatLng', 'fMapUrl'].forEach(id => {
+    document.getElementById(id).addEventListener('input', refreshCaseMapPreview);
+  });
+
+  // ===== Init =====
+  loadCases();
+</script>
+</body>
+</html>
