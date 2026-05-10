@@ -112,6 +112,45 @@ grant select, insert, update, delete on table public.case_activities to anon, au
 grant usage, select on sequence public.cases_id_seq to anon, authenticated;
 grant usage, select on sequence public.case_activities_id_seq to anon, authenticated;
 
+-- 3.6 写真保存用 Storage バケット
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'case-photos',
+  'case-photos',
+  true,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp']
+)
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "allow_case_photos_read" on storage.objects;
+create policy "allow_case_photos_read" on storage.objects
+  for select
+  to anon, authenticated
+  using (bucket_id = 'case-photos');
+
+drop policy if exists "allow_case_photos_insert" on storage.objects;
+create policy "allow_case_photos_insert" on storage.objects
+  for insert
+  to anon, authenticated
+  with check (bucket_id = 'case-photos');
+
+drop policy if exists "allow_case_photos_update" on storage.objects;
+create policy "allow_case_photos_update" on storage.objects
+  for update
+  to anon, authenticated
+  using (bucket_id = 'case-photos')
+  with check (bucket_id = 'case-photos');
+
+drop policy if exists "allow_case_photos_delete" on storage.objects;
+create policy "allow_case_photos_delete" on storage.objects
+  for delete
+  to anon, authenticated
+  using (bucket_id = 'case-photos');
+
 -- 4. ポリシー設定（一時: ログイン不要モード）
 --    ログイン機能を戻すときは、限定ポリシーに再変更してください
 drop policy if exists "allow_all_for_anon" on cases;

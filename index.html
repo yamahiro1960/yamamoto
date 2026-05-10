@@ -372,6 +372,62 @@
     .form-group select:focus,
     .form-group textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
     .form-group textarea { resize: vertical; min-height: 80px; }
+    .photo-field {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .photo-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .photo-preview {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #f8fafc;
+      padding: 10px;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .photo-preview.has-image {
+      display: flex;
+    }
+    .photo-preview img {
+      width: 128px;
+      max-width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+    .photo-preview-text {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+    .photo-thumb-link {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: flex-start;
+      text-decoration: none;
+      color: var(--primary);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .photo-thumb-link img {
+      width: 120px;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
     .modal-foot {
       padding: 16px 24px;
       border-top: 1px solid var(--border);
@@ -431,6 +487,7 @@
     .timeline-links a {
       font-size: 12px;
       color: #1d4ed8;
+      flex-wrap: wrap;
       text-decoration: none;
       border: 1px solid #bfdbfe;
       background: #eff6ff;
@@ -754,8 +811,24 @@
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>写真URL</label>
-          <input type="url" id="fPhotoUrl" placeholder="https://..." />
+          <label>写真</label>
+          <div class="photo-field">
+            <input type="hidden" id="fPhotoUrl" />
+            <input type="file" id="fPhotoFile" accept="image/*" capture="environment" class="hidden" />
+            <div class="photo-actions">
+              <button type="button" class="btn btn-primary" id="fPhotoCaptureBtn">カメラで撮影</button>
+              <button type="button" class="btn btn-ghost" id="fPhotoSelectBtn">画像を選択</button>
+              <button type="button" class="btn btn-ghost" id="fPhotoClearBtn">写真を削除</button>
+            </div>
+            <div class="photo-preview" id="fPhotoPreview">
+              <img id="fPhotoPreviewImg" alt="案件写真プレビュー" />
+              <div class="photo-preview-text">
+                <strong>保存予定の写真</strong>
+                <span id="fPhotoPreviewMeta">未選択</span>
+                <a id="fPhotoPreviewLink" target="_blank" rel="noopener noreferrer">別タブで開く</a>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="form-group">
           <label>添付ファイルURL</label>
@@ -808,8 +881,24 @@
             </select>
           </div>
           <div class="form-group">
-            <label>写真URL</label>
-            <input type="url" id="tPhotoUrl" placeholder="https://..." />
+            <label>写真</label>
+            <div class="photo-field">
+              <input type="hidden" id="tPhotoUrl" />
+              <input type="file" id="tPhotoFile" accept="image/*" capture="environment" class="hidden" />
+              <div class="photo-actions">
+                <button type="button" class="btn btn-primary" id="tPhotoCaptureBtn">カメラで撮影</button>
+                <button type="button" class="btn btn-ghost" id="tPhotoSelectBtn">画像を選択</button>
+                <button type="button" class="btn btn-ghost" id="tPhotoClearBtn">写真を削除</button>
+              </div>
+              <div class="photo-preview" id="tPhotoPreview">
+                <img id="tPhotoPreviewImg" alt="履歴写真プレビュー" />
+                <div class="photo-preview-text">
+                  <strong>保存予定の写真</strong>
+                  <span id="tPhotoPreviewMeta">未選択</span>
+                  <a id="tPhotoPreviewLink" target="_blank" rel="noopener noreferrer">別タブで開く</a>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="form-group">
             <label>添付ファイルURL</label>
@@ -846,6 +935,7 @@
 
   const { createClient } = supabase;
   const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const PHOTO_BUCKET = 'case-photos';
 
   // ===== State =====
   let cases = [];
@@ -854,6 +944,7 @@
   let timelineCaseId = null;
   const PAGE_SIZE = 8;
   let currentPage = 1;
+  const pendingPhotoUploads = { f: null, t: null };
 
   // ===== Helpers =====
   const statusClass  = { '進行中': 'inprogress', '完了': 'completed', '保留': 'pending', 'キャンセル': 'cancelled', '新規': 'new' };
@@ -870,6 +961,163 @@
   }
   function fmtId(id) {
     return 'A-' + String(id).padStart(3, '0');
+  }
+  function makePhotoFileName(name = 'photo.jpg') {
+    const safe = String(name || 'photo.jpg').replace(/[^a-zA-Z0-9._-]/g, '-');
+    return safe.toLowerCase().endsWith('.jpg') || safe.toLowerCase().endsWith('.jpeg')
+      ? safe
+      : `${safe.replace(/\.[^.]+$/, '') || 'photo'}.jpg`;
+  }
+  function buildPhotoStoragePath(prefix, fileName) {
+    const folder = prefix === 'f' ? 'cases' : 'activities';
+    const ownerId = prefix === 'f' ? (editingId || 'new') : (timelineCaseId || 'new');
+    const stamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
+    const random = Math.random().toString(36).slice(2, 8);
+    return `${folder}/${ownerId}/${stamp}-${random}-${fileName}`;
+  }
+  function getPhotoFieldRefs(prefix) {
+    return {
+      hidden: document.getElementById(prefix + 'PhotoUrl'),
+      file: document.getElementById(prefix + 'PhotoFile'),
+      preview: document.getElementById(prefix + 'PhotoPreview'),
+      img: document.getElementById(prefix + 'PhotoPreviewImg'),
+      meta: document.getElementById(prefix + 'PhotoPreviewMeta'),
+      link: document.getElementById(prefix + 'PhotoPreviewLink'),
+    };
+  }
+  function formatBytes(bytes) {
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  function dataUrlBytes(dataUrl) {
+    if (!(dataUrl || '').startsWith('data:')) return 0;
+    const base64 = (dataUrl || '').split(',')[1] || '';
+    return Math.ceil((base64.length * 3) / 4);
+  }
+  function clearPendingPhoto(prefix) {
+    pendingPhotoUploads[prefix] = null;
+  }
+  function setPhotoPreview(prefix, dataUrl, metaText = '') {
+    const refs = getPhotoFieldRefs(prefix);
+    refs.hidden.value = dataUrl || '';
+    refs.file.value = '';
+    if (!dataUrl) {
+      clearPendingPhoto(prefix);
+      refs.preview.classList.remove('has-image');
+      refs.img.removeAttribute('src');
+      refs.link.removeAttribute('href');
+      refs.meta.textContent = '未選択';
+      return;
+    }
+    refs.preview.classList.add('has-image');
+    refs.img.src = dataUrl;
+    refs.link.href = dataUrl;
+    refs.meta.textContent = metaText || ((dataUrl || '').startsWith('data:')
+      ? `保存サイズ: ${formatBytes(dataUrlBytes(dataUrl))}`
+      : '既存の写真');
+  }
+  async function downscaleImage(file, maxWidth = 1600, quality = 0.82) {
+    const imageUrl = URL.createObjectURL(file);
+    try {
+      const image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('画像の読み込みに失敗しました'));
+        img.src = imageUrl;
+      });
+      const scale = Math.min(1, maxWidth / image.width);
+      const width = Math.max(1, Math.round(image.width * scale));
+      const height = Math.max(1, Math.round(image.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(image, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL('image/jpeg', quality);
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(result => {
+          if (result) resolve(result);
+          else reject(new Error('画像の圧縮に失敗しました'));
+        }, 'image/jpeg', quality);
+      });
+      return {
+        dataUrl,
+        blob,
+        width,
+        height,
+      };
+    } finally {
+      URL.revokeObjectURL(imageUrl);
+    }
+  }
+  async function handlePhotoSelection(prefix, file) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('⚠️', '画像ファイルを選択してください');
+      return;
+    }
+    try {
+      const { dataUrl, blob, width, height } = await downscaleImage(file);
+      const uploadFile = new File([blob], makePhotoFileName(file.name || 'camera.jpg'), { type: 'image/jpeg' });
+      pendingPhotoUploads[prefix] = { file: uploadFile };
+      setPhotoPreview(prefix, dataUrl, `保存時にアップロード / ${width}x${height} / ${formatBytes(uploadFile.size)}`);
+    } catch (error) {
+      showToast('❌', error.message || '画像の処理に失敗しました');
+    }
+  }
+  async function uploadPendingPhoto(prefix) {
+    const pending = pendingPhotoUploads[prefix];
+    if (!pending) {
+      return document.getElementById(prefix + 'PhotoUrl').value.trim();
+    }
+    const path = buildPhotoStoragePath(prefix, pending.file.name);
+    const { error: uploadError } = await db.storage
+      .from(PHOTO_BUCKET)
+      .upload(path, pending.file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: pending.file.type || 'image/jpeg',
+      });
+    if (uploadError) {
+      throw new Error('写真アップロードに失敗しました: ' + uploadError.message);
+    }
+    const { data } = db.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+    const publicUrl = data?.publicUrl || '';
+    if (!publicUrl) {
+      throw new Error('写真URLの取得に失敗しました');
+    }
+    clearPendingPhoto(prefix);
+    setPhotoPreview(prefix, publicUrl, 'アップロード済み');
+    return publicUrl;
+  }
+  function openPhotoInput(prefix, preferCamera) {
+    const refs = getPhotoFieldRefs(prefix);
+    if (preferCamera) {
+      refs.file.setAttribute('capture', 'environment');
+    } else {
+      refs.file.removeAttribute('capture');
+    }
+    refs.file.click();
+  }
+  function bindPhotoField(prefix) {
+    const refs = getPhotoFieldRefs(prefix);
+    refs.file.addEventListener('change', async (event) => {
+      const [file] = event.target.files || [];
+      await handlePhotoSelection(prefix, file);
+    });
+    document.getElementById(prefix + 'PhotoCaptureBtn').onclick = () => openPhotoInput(prefix, true);
+    document.getElementById(prefix + 'PhotoSelectBtn').onclick = () => openPhotoInput(prefix, false);
+    document.getElementById(prefix + 'PhotoClearBtn').onclick = () => setPhotoPreview(prefix, '');
+  }
+  function renderPhotoLink(photoUrl, label = '写真を開く') {
+    if (!photoUrl) return '';
+    return `
+      <a class="photo-thumb-link" href="${photoUrl}" target="_blank" rel="noopener noreferrer">
+        <img src="${photoUrl}" alt="${label}" />
+        <span>${label}</span>
+      </a>`;
   }
   function parseNullableNumber(raw) {
     if (raw === '' || raw == null) return null;
@@ -1021,6 +1269,11 @@
     btn.disabled = loading;
     btn.textContent = loading ? '処理中…' : (editingId ? '更新する' : '登録する');
   }
+  function setTimelineSaveLoading(loading) {
+    const btn = document.getElementById('addTimelineBtn');
+    btn.disabled = loading;
+    btn.textContent = loading ? '処理中…' : '履歴を保存';
+  }
 
   // ===== Filter & sort (クライアントサイド) =====
   function filtered() {
@@ -1129,6 +1382,7 @@
       document.getElementById('saveBtn').textContent = '登録する';
       document.getElementById('openTimelineBtn').classList.add('hidden');
       ['fName', 'fClient', 'fAssignee', 'fStartDate', 'fDeadline', 'fNote', 'fPhotoUrl', 'fAttachmentUrl', 'fLocationAddress', 'fLatLng', 'fMapUrl'].forEach(id => document.getElementById(id).value = '');
+      setPhotoPreview('f', '');
       document.getElementById('fStatus').value   = '新規';
       document.getElementById('fWorkStatus').value = '未着手';
       document.getElementById('fPriority').value = '中';
@@ -1155,6 +1409,11 @@
     document.getElementById('fWorkStatus').value = c.work_status || '未着手';
     document.getElementById('fPriority').value  = c.priority;
     document.getElementById('fPhotoUrl').value  = c.photo_url || '';
+    setPhotoPreview('f', c.photo_url || '', c.photo_url
+      ? ((c.photo_url || '').startsWith('data:')
+        ? `保存サイズ: ${formatBytes(dataUrlBytes(c.photo_url))}`
+        : '既存の写真')
+      : '');
     document.getElementById('fAttachmentUrl').value = c.attachment_url || '';
     document.getElementById('fLocationAddress').value = c.location_address || '';
     document.getElementById('fLatLng').value = (c.latitude != null && c.longitude != null)
@@ -1177,6 +1436,7 @@
     document.getElementById('tAuthor').value = c.assignee || '';
     document.getElementById('tWorkStatus').value = '未着手';
     document.getElementById('tPhotoUrl').value = '';
+    setPhotoPreview('t', '');
     document.getElementById('tAttachmentUrl').value = '';
     document.getElementById('tDetail').value = '';
     document.getElementById('timelineOverlay').classList.add('open');
@@ -1203,7 +1463,7 @@
         <div class="timeline-meta">${item.performed_on} / ${item.author || '未設定'}</div>
         <div class="timeline-item-detail">${item.detail || ''}</div>
         <div class="timeline-links">
-          ${item.photo_url ? `<a href="${item.photo_url}" target="_blank" rel="noopener noreferrer">写真を開く</a>` : ''}
+          ${renderPhotoLink(item.photo_url, '写真を開く')}
           ${item.attachment_url ? `<a href="${item.attachment_url}" target="_blank" rel="noopener noreferrer">添付を開く</a>` : ''}
         </div>
       </div>
@@ -1216,30 +1476,38 @@
     const title = document.getElementById('tTitle').value.trim();
     const author = document.getElementById('tAuthor').value.trim() || '未設定';
     const workStatus = document.getElementById('tWorkStatus').value;
-    const photoUrl = document.getElementById('tPhotoUrl').value.trim();
-    const attachmentUrl = document.getElementById('tAttachmentUrl').value.trim();
-    const detail = document.getElementById('tDetail').value.trim();
 
     if (!performedOn || !title) {
       showToast('⚠️', '実施日とタイトルは必須です');
       return;
     }
 
-    const ok = await insertActivity({
-      case_id: timelineCaseId,
-      performed_on: performedOn,
-      title,
-      author,
-      work_status: workStatus,
-      photo_url: photoUrl,
-      attachment_url: attachmentUrl,
-      detail,
-    });
+    setTimelineSaveLoading(true);
+    let ok = false;
+    try {
+      const photoUrl = await uploadPendingPhoto('t');
+      const attachmentUrl = document.getElementById('tAttachmentUrl').value.trim();
+      const detail = document.getElementById('tDetail').value.trim();
+      ok = await insertActivity({
+        case_id: timelineCaseId,
+        performed_on: performedOn,
+        title,
+        author,
+        work_status: workStatus,
+        photo_url: photoUrl,
+        attachment_url: attachmentUrl,
+        detail,
+      });
+    } catch (error) {
+      showToast('❌', error.message || '写真の保存に失敗しました');
+    }
+    setTimelineSaveLoading(false);
     if (!ok) return;
 
     showToast('✅', '履歴を保存しました');
     document.getElementById('tTitle').value = '';
     document.getElementById('tPhotoUrl').value = '';
+    setPhotoPreview('t', '');
     document.getElementById('tAttachmentUrl').value = '';
     document.getElementById('tDetail').value = '';
     await loadActivities(timelineCaseId);
@@ -1263,32 +1531,36 @@
       showToast('⚠️', '緯度経度は「緯度, 経度」の形式で入力してください');
       return;
     }
-
-    const payload = {
-      name,
-      client,
-      assignee: document.getElementById('fAssignee').value.trim() || '未割当',
-      status:   document.getElementById('fStatus').value,
-      work_status: document.getElementById('fWorkStatus').value,
-      priority: document.getElementById('fPriority').value,
-      photo_url: document.getElementById('fPhotoUrl').value.trim(),
-      attachment_url: document.getElementById('fAttachmentUrl').value.trim(),
-      location_address: document.getElementById('fLocationAddress').value.trim(),
-      latitude: latLng.latitude,
-      longitude: latLng.longitude,
-      map_url: document.getElementById('fMapUrl').value.trim(),
-      deadline: document.getElementById('fDeadline').value || null,
-      note:     document.getElementById('fNote').value.trim(),
-    };
-
     setSaveLoading(true);
-    let ok;
-    if (editingId) {
-      ok = await updateCase(editingId, payload);
-      if (ok) showToast('✅', '案件を更新しました');
-    } else {
-      ok = await insertCase(payload);
-      if (ok) showToast('✅', '新規案件を登録しました');
+    let ok = false;
+    try {
+      const photoUrl = await uploadPendingPhoto('f');
+      const payload = {
+        name,
+        client,
+        assignee: document.getElementById('fAssignee').value.trim() || '未割当',
+        status:   document.getElementById('fStatus').value,
+        work_status: document.getElementById('fWorkStatus').value,
+        priority: document.getElementById('fPriority').value,
+        photo_url: photoUrl,
+        attachment_url: document.getElementById('fAttachmentUrl').value.trim(),
+        location_address: document.getElementById('fLocationAddress').value.trim(),
+        latitude: latLng.latitude,
+        longitude: latLng.longitude,
+        map_url: document.getElementById('fMapUrl').value.trim(),
+        deadline: document.getElementById('fDeadline').value || null,
+        note:     document.getElementById('fNote').value.trim(),
+      };
+
+      if (editingId) {
+        ok = await updateCase(editingId, payload);
+        if (ok) showToast('✅', '案件を更新しました');
+      } else {
+        ok = await insertCase(payload);
+        if (ok) showToast('✅', '新規案件を登録しました');
+      }
+    } catch (error) {
+      showToast('❌', error.message || '写真の保存に失敗しました');
     }
     setSaveLoading(false);
     if (ok) {
@@ -1354,6 +1626,9 @@
   document.getElementById('addTimelineBtn').onclick = addTimelineEntry;
   document.getElementById('saveBtn').onclick        = saveCase;
   document.getElementById('exportBtn').onclick      = exportCSV;
+  bindPhotoField('f');
+  bindPhotoField('t');
+  setTimelineSaveLoading(false);
   document.getElementById('modalOverlay').addEventListener('click', e => {
     if (e.target === document.getElementById('modalOverlay')) closeModal();
   });
