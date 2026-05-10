@@ -261,6 +261,11 @@
     }
     tbody tr:last-child { border-bottom: none; }
     tbody tr:hover { background: #f8fafc; }
+    tbody tr.deleted-row {
+      background: #fff7ed;
+      color: #9a3412;
+    }
+    tbody tr.deleted-row:hover { background: #ffedd5; }
     tbody td {
       padding: 14px 16px;
       font-size: 14px;
@@ -287,6 +292,8 @@
     .badge-cancelled   .badge-dot { background: #dc2626; }
     .badge-new         { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
     .badge-new         .badge-dot { background: #22c55e; }
+    .badge-deleted     { background: #fff7ed; color: #9a3412; border: 1px solid #fdba74; }
+    .badge-deleted     .badge-dot { background: #ea580c; }
 
     /* Priority */
     .priority { font-size: 13px; font-weight: 600; }
@@ -467,6 +474,11 @@
       margin-bottom: 10px;
       background: #f8fafc;
       border-radius: 8px;
+    }
+    .timeline-item.deleted {
+      opacity: .84;
+      border-left-color: #fdba74;
+      background: #fff7ed;
     }
     .timeline-item-head {
       display: flex;
@@ -682,6 +694,7 @@
         <option value="保留">保留</option>
         <option value="キャンセル">キャンセル</option>
         <option value="新規">新規</option>
+        <option value="削除待ち">削除待ち</option>
       </select>
       <select class="filter-select" id="priorityFilter">
         <option value="">すべての優先度</option>
@@ -955,6 +968,9 @@
     const cls = statusClass[s] || 'inprogress';
     return `<span class="badge badge-${cls}"><span class="badge-dot"></span>${s}</span>`;
   }
+  function deletedBadge(label = '削除待ち') {
+    return `<span class="badge badge-deleted"><span class="badge-dot"></span>${label}</span>`;
+  }
   function priorityBadge(p) {
     const cls = priorityClass[p] || 'medium';
     return `<span class="priority priority-${cls}">${p === '高' ? '▲ 高' : p === '中' ? '─ 中' : '▽ 低'}</span>`;
@@ -998,6 +1014,20 @@
   }
   function clearPendingPhoto(prefix) {
     pendingPhotoUploads[prefix] = null;
+  }
+  function extractStoragePath(photoUrl) {
+    const marker = `/storage/v1/object/public/${PHOTO_BUCKET}/`;
+    const idx = (photoUrl || '').indexOf(marker);
+    if (idx === -1) return '';
+    return decodeURIComponent(photoUrl.slice(idx + marker.length).split('?')[0]);
+  }
+  async function removeStoredPhotos(photoUrls) {
+    const paths = [...new Set((photoUrls || []).map(extractStoragePath).filter(Boolean))];
+    if (!paths.length) return;
+    const { error } = await db.storage.from(PHOTO_BUCKET).remove(paths);
+    if (error) {
+      throw new Error('写真ファイルの削除に失敗しました: ' + error.message);
+    }
   }
   function setPhotoPreview(prefix, dataUrl, metaText = '') {
     const refs = getPhotoFieldRefs(prefix);
@@ -1222,6 +1252,13 @@
     return true;
   }
 
+  async function softDeleteCase(id) {
+    if (!requireAuth()) return false;
+    const { error } = await db.from('cases').update({ is_deleted: true, deleted_at: new Date().toISOString() }).eq('id', id);
+    if (error) { showToast('❌', '削除フラグ設定に失敗しました: ' + error.message); return false; }
+    return true;
+  }
+
   async function deleteFromDB(id) {
     if (!requireAuth()) return false;
     const { error } = await db.from('cases').delete().eq('id', id);
@@ -1251,10 +1288,56 @@
     return true;
   }
 
+  async function softDeleteActivity(id) {
+    const { error } = await db.from('case_activities').update({ is_deleted: true, deleted_at: new Date().toISOString() }).eq('id', id);
+    if (error) { showToast('❌', '履歴の削除フラグ設定に失敗しました: ' + error.message); return false; }
+    return true;
+  }
+
   async function deleteActivity(id) {
     const { error } = await db.from('case_activities').delete().eq('id', id);
     if (error) { showToast('❌', '履歴削除に失敗しました: ' + error.message); return false; }
     return true;
+  }
+
+  async function hardDeleteActivity(id) {
+    const { data, error } = await db.from('case_activities').select('photo_url').eq('id', id).maybeSingle();
+    if (error) {
+      showToast('❌', '履歴取得に失敗しました: ' + error.message);
+      return false;
+    }
+    try {
+      await removeStoredPhotos([data?.photo_url || '']);
+    } catch (storageError) {
+      showToast('❌', storageError.message);
+      return false;
+    }
+    return deleteActivity(id);
+  }
+
+  async function hardDeleteCase(id) {
+    const [{ data: caseData, error: caseError }, { data: activityData, error: activityError }] = await Promise.all([
+      db.from('cases').select('photo_url').eq('id', id).maybeSingle(),
+      db.from('case_activities').select('photo_url').eq('case_id', id),
+    ]);
+    if (caseError) {
+      showToast('❌', '案件取得に失敗しました: ' + caseError.message);
+      return false;
+    }
+    if (activityError) {
+      showToast('❌', '履歴取得に失敗しました: ' + activityError.message);
+      return false;
+    }
+    try {
+      await removeStoredPhotos([
+        caseData?.photo_url || '',
+        ...(activityData || []).map(item => item.photo_url || ''),
+      ]);
+    } catch (storageError) {
+      showToast('❌', storageError.message);
+      return false;
+    }
+    return deleteFromDB(id);
   }
 
   // ===== Loading states =====
@@ -1281,12 +1364,14 @@
     const st  = document.getElementById('statusFilter').value;
     const pr  = document.getElementById('priorityFilter').value;
     const srt = document.getElementById('sortSelect').value;
+    const showDeletedOnly = st === '削除待ち';
     let list = cases.filter(c => {
       const matchQ  = !q  || [c.name, c.client, c.assignee].some(v => (v || '').toLowerCase().includes(q));
       const matchQLocation = !q || (c.location_address || '').toLowerCase().includes(q);
-      const matchSt = !st || c.status === st;
+      const matchDeleted = showDeletedOnly ? !!c.is_deleted : !c.is_deleted;
+      const matchSt = showDeletedOnly ? true : (!st || c.status === st);
       const matchPr = !pr || c.priority === pr;
-      return (matchQ || matchQLocation) && matchSt && matchPr;
+      return (matchQ || matchQLocation) && matchDeleted && matchSt && matchPr;
     });
     list = list.slice().sort((a, b) => {
       if (srt === 'id_asc')       return a.id - b.id;
@@ -1304,11 +1389,12 @@
   }
 
   function updateKPI() {
-    const total = cases.length;
-    const inp   = cases.filter(c => c.status === '進行中').length;
-    const comp  = cases.filter(c => c.status === '完了').length;
-    const pend  = cases.filter(c => c.status === '保留').length;
-    const canc  = cases.filter(c => c.status === 'キャンセル').length;
+    const activeCases = cases.filter(c => !c.is_deleted);
+    const total = activeCases.length;
+    const inp   = activeCases.filter(c => c.status === '進行中').length;
+    const comp  = activeCases.filter(c => c.status === '完了').length;
+    const pend  = activeCases.filter(c => c.status === '保留').length;
+    const canc  = activeCases.filter(c => c.status === 'キャンセル').length;
     const pct = v => total ? Math.round(v / total * 100) : 0;
     document.getElementById('kpiTotal').textContent      = total;
     document.getElementById('kpiInProgress').textContent = inp;
@@ -1342,12 +1428,12 @@
       tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-sub);padding:40px">該当する案件が見つかりません</td></tr>`;
     } else {
       tbody.innerHTML = slice.map(c => `
-        <tr onclick="openEdit(${c.id})">
+        <tr class="${c.is_deleted ? 'deleted-row' : ''}" onclick="openEdit(${c.id})">
           <td><code style="font-size:12px;color:var(--text-sub)">${fmtId(c.id)}</code></td>
           <td><strong>${c.name}</strong></td>
           <td>${c.client}</td>
           <td>${c.assignee || '—'}</td>
-          <td>${statusBadge(c.status)}</td>
+          <td>${c.is_deleted ? deletedBadge('削除待ち') : statusBadge(c.status)}</td>
           <td><span class="work-status work-status-${workStatusClass[c.work_status] || 'notstarted'}">${c.work_status || '未着手'}</span></td>
           <td>${priorityBadge(c.priority)}</td>
           <td>${c.location_address || '—'}</td>
@@ -1355,7 +1441,7 @@
           <td onclick="event.stopPropagation()">
             <button class="action-btn" onclick="openCaseMap(${c.id})" title="地図を開く">📍</button>
             <button class="action-btn" onclick="openTimeline(${c.id})" title="実施履歴">🕒</button>
-            <button class="action-btn" onclick="deleteCase(${c.id})" title="削除">🗑</button>
+            <button class="action-btn" onclick="deleteCase(${c.id})" title="${c.is_deleted ? '完全削除' : '削除フラグ'}">🗑</button>
           </td>
         </tr>`).join('');
     }
@@ -1454,13 +1540,13 @@
       return;
     }
     container.innerHTML = activities.map(item => `
-      <div class="timeline-item">
+      <div class="timeline-item ${item.is_deleted ? 'deleted' : ''}">
         <div class="timeline-item-head">
           <div class="timeline-item-title">${item.title}</div>
-          <span class="work-status work-status-${workStatusClass[item.work_status] || 'notstarted'}">${item.work_status || '未着手'}</span>
-          <button class="action-btn" onclick="removeTimeline(${item.id})" title="削除">🗑</button>
+          ${item.is_deleted ? deletedBadge('削除待ち') : `<span class="work-status work-status-${workStatusClass[item.work_status] || 'notstarted'}">${item.work_status || '未着手'}</span>`}
+          <button class="action-btn" onclick="removeTimeline(${item.id})" title="${item.is_deleted ? '完全削除' : '削除フラグ'}">🗑</button>
         </div>
-        <div class="timeline-meta">${item.performed_on} / ${item.author || '未設定'}</div>
+        <div class="timeline-meta">${item.performed_on} / ${item.author || '未設定'}${item.deleted_at ? ` / ${item.deleted_at.slice(0, 16).replace('T', ' ')}` : ''}</div>
         <div class="timeline-item-detail">${item.detail || ''}</div>
         <div class="timeline-links">
           ${renderPhotoLink(item.photo_url, '写真を開く')}
@@ -1472,6 +1558,11 @@
 
   async function addTimelineEntry() {
     if (!timelineCaseId) return;
+    const currentCase = cases.find(x => x.id === timelineCaseId);
+    if (currentCase?.is_deleted) {
+      showToast('⚠️', '削除待ちの案件には履歴を追加できません');
+      return;
+    }
     const performedOn = document.getElementById('tPerformedOn').value;
     const title = document.getElementById('tTitle').value.trim();
     const author = document.getElementById('tAuthor').value.trim() || '未設定';
@@ -1514,10 +1605,15 @@
   }
 
   async function removeTimeline(id) {
-    if (!confirm('この履歴を削除しますか？')) return;
-    const ok = await deleteActivity(id);
+    const item = activities.find(x => x.id === id);
+    if (!item) return;
+    const confirmed = item.is_deleted
+      ? confirm('2段階目の削除です。この履歴を完全削除しますか？')
+      : confirm('1段階目の削除です。削除フラグを立てます。2回目の削除で完全削除されます。実行しますか？');
+    if (!confirmed) return;
+    const ok = item.is_deleted ? await hardDeleteActivity(id) : await softDeleteActivity(id);
     if (!ok) return;
-    showToast('🗑', '履歴を削除しました');
+    showToast('🗑', item.is_deleted ? '履歴を完全削除しました' : '履歴を削除待ちにしました');
     await loadActivities(timelineCaseId);
   }
 
@@ -1571,11 +1667,19 @@
   }
 
   async function deleteCase(id) {
-    if (!confirm('この案件を削除しますか？')) return;
-    const ok = await deleteFromDB(id);
+    const item = cases.find(x => x.id === id);
+    if (!item) return;
+    const confirmed = item.is_deleted
+      ? confirm('2段階目の削除です。案件本体、実施履歴、保存済み写真を完全削除しますか？')
+      : confirm('1段階目の削除です。削除フラグを立てます。2回目の削除で関連データを含め完全削除されます。実行しますか？');
+    if (!confirmed) return;
+    const ok = item.is_deleted ? await hardDeleteCase(id) : await softDeleteCase(id);
     if (ok) {
-      showToast('🗑', '案件を削除しました');
+      showToast('🗑', item.is_deleted ? '案件を完全削除しました' : '案件を削除待ちにしました');
       await loadCases();
+      if (timelineCaseId === id && item.is_deleted) {
+        closeTimeline();
+      }
     }
   }
 
@@ -1590,7 +1694,7 @@
 
   // ===== Export (CSV) =====
   function exportCSV() {
-    const header = ['案件ID', '案件名', '顧客名', '担当者', 'ステータス', '作業ステータス', '優先度', '場所', '緯度', '経度', '地図URL', '写真URL', '添付ファイルURL', '期限', '備考'];
+    const header = ['案件ID', '案件名', '顧客名', '担当者', 'ステータス', '作業ステータス', '優先度', '削除フラグ', '削除日時', '場所', '緯度', '経度', '地図URL', '写真URL', '添付ファイルURL', '期限', '備考'];
     const rows   = cases.map(c => [
       fmtId(c.id),
       c.name,
@@ -1599,6 +1703,8 @@
       c.status,
       c.work_status || '',
       c.priority,
+      c.is_deleted ? '1' : '0',
+      c.deleted_at || '',
       c.location_address || '',
       c.latitude ?? '',
       c.longitude ?? '',

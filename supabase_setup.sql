@@ -23,6 +23,8 @@ create table if not exists cases (
   map_url     text        not null default '',
   deadline    date,
   note        text        not null default '',
+  is_deleted  boolean     not null default false,
+  deleted_at  timestamptz,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
@@ -34,6 +36,8 @@ alter table cases add column if not exists location_address text not null defaul
 alter table cases add column if not exists latitude double precision;
 alter table cases add column if not exists longitude double precision;
 alter table cases add column if not exists map_url text not null default '';
+alter table cases add column if not exists is_deleted boolean not null default false;
+alter table cases add column if not exists deleted_at timestamptz;
 
 do $$
 begin
@@ -59,6 +63,8 @@ create table if not exists case_activities (
   attachment_url text      not null default '',
   detail       text        not null default '',
   author       text        not null default '未設定',
+  is_deleted   boolean     not null default false,
+  deleted_at   timestamptz,
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
@@ -66,6 +72,8 @@ create table if not exists case_activities (
 alter table case_activities add column if not exists work_status text not null default '未着手';
 alter table case_activities add column if not exists photo_url text not null default '';
 alter table case_activities add column if not exists attachment_url text not null default '';
+alter table case_activities add column if not exists is_deleted boolean not null default false;
+alter table case_activities add column if not exists deleted_at timestamptz;
 
 do $$
 begin
