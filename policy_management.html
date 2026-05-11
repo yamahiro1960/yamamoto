@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>政策管理ボード</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --bg: #f4f6fb;
+      --surface: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --line: #dbe1ea;
+      --primary: #0f766e;
+      --primary-soft: #ccfbf1;
+      --accent: #0ea5e9;
+      --danger: #dc2626;
+      --warn: #d97706;
+      --radius: 12px;
+    }
+    body {
+      margin: 0;
+      font-family: "Yu Gothic UI", "Hiragino Sans", sans-serif;
+      background:
+        radial-gradient(1200px 500px at 80% -10%, #d1fae5 0%, transparent 60%),
+        radial-gradient(1000px 420px at -10% 0%, #dbeafe 0%, transparent 50%),
+        var(--bg);
+      color: var(--ink);
+    }
+    .layout {
+      max-width: 1320px;
+      margin: 0 auto;
+      min-height: 100vh;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 16px;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 28px rgba(2, 6, 23, 0.04);
+    }
+    .left {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .left-head {
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .left-head h1 {
+      font-size: 18px;
+      margin: 0;
+      letter-spacing: 0.02em;
+    }
+    .left-tools {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      gap: 8px;
+    }
+    .policy-list {
+      padding: 8px;
+      overflow: auto;
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      max-height: calc(100vh - 260px);
+    }
+    .policy-item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      cursor: pointer;
+      background: #fff;
+      transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    }
+    .policy-item:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(2, 6, 23, 0.08);
+    }
+    .policy-item.active {
+      border-color: #14b8a6;
+      background: #f0fdfa;
+    }
+    .policy-title {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    .policy-sub {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .right {
+      padding: 16px;
+      overflow: auto;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .topbar h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: 0.01em;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 10px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .card h3 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      border-left: 4px solid #14b8a6;
+      padding-left: 8px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .stat {
+      border: 1px dashed #a7f3d0;
+      border-radius: 10px;
+      padding: 10px;
+      background: #f0fdfa;
+    }
+    .stat .label {
+      font-size: 12px;
+      color: #0f766e;
+    }
+    .stat .value {
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font: inherit;
+      font-size: 14px;
+      padding: 9px 10px;
+      background: #fff;
+      color: var(--ink);
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #14b8a6;
+      box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.14);
+    }
+    textarea { min-height: 90px; resize: vertical; }
+
+    .field-3 { grid-column: span 3; }
+    .field-4 { grid-column: span 4; }
+    .field-6 { grid-column: span 6; }
+    .field-8 { grid-column: span 8; }
+    .field-12 { grid-column: span 12; }
+
+    .btn {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn:hover { background: #f8fafc; }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .btn-primary:hover { background: #0d6a63; }
+    .btn-soft {
+      background: var(--primary-soft);
+      color: #0f766e;
+      border-color: #99f6e4;
+    }
+    .btn-danger {
+      background: #fff5f5;
+      color: #b91c1c;
+      border-color: #fecaca;
+    }
+
+    .list-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 2px 0 8px;
+    }
+    .mini-list {
+      display: grid;
+      gap: 8px;
+    }
+    .mini-row {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      background: #fff;
+    }
+    .mini-row .row { align-items: end; }
+    .divider {
+      height: 1px;
+      background: var(--line);
+      margin: 10px 0;
+    }
+    .footnote {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1100px) {
+      .layout { grid-template-columns: 1fr; }
+      .policy-list { max-height: 240px; }
+      .stats { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+    }
+    @media (max-width: 700px) {
+      .field-3, .field-4, .field-6, .field-8, .field-12 { grid-column: span 12; }
+      .topbar h2 { font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <section class="panel left">
+      <div class="left-head">
+        <h1>政策管理</h1>
+        <button class="btn btn-soft" id="addPolicyBtn">+ 新規</button>
+      </div>
+      <div class="left-tools">
+        <input id="policySearch" type="text" placeholder="政策名・カテゴリで検索" />
+        <button class="btn" id="backToCasesBtn">案件管理へ戻る</button>
+      </div>
+      <div class="policy-list" id="policyList"></div>
+    </section>
+
+    <main class="panel right">
+      <div class="topbar">
+        <h2 id="currentPolicyTitle">政策を選択してください</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn" id="exportBtn">JSON出力</button>
+          <button class="btn" id="importBtn">JSON取込</button>
+          <button class="btn btn-primary" id="savePolicyBtn">保存</button>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="label">政策数</div><div class="value" id="statPolicies">0</div></div>
+        <div class="stat"><div class="label">資料件数</div><div class="value" id="statLaws">0</div></div>
+        <div class="stat"><div class="label">関係者数</div><div class="value" id="statPeople">0</div></div>
+        <div class="stat"><div class="label">実行タスク</div><div class="value" id="statActions">0</div></div>
+      </div>
+
+      <section class="card">
+        <h3>基本情報</h3>
+        <div class="row">
+          <div class="field-6">
+            <label>政策名</label>
+            <input id="fTitle" type="text" placeholder="例: 子育て支援の拡充" />
+          </div>
+          <div class="field-3">
+            <label>カテゴリ</label>
+            <select id="fCategory">
+              <option>福祉</option>
+              <option>教育</option>
+              <option>防災</option>
+              <option>産業</option>
+              <option>環境</option>
+              <option>交通</option>
+              <option>地域振興</option>
+              <option>その他</option>
+            </select>
+          </div>
+          <div class="field-3">
+            <label>進捗フェーズ</label>
+            <select id="fStage">
+              <option>構想</option>
+              <option>調査</option>
+              <option>素案作成</option>
+              <option>調整中</option>
+              <option>決裁待ち</option>
+              <option>実施中</option>
+            </select>
+          </div>
+          <div class="field-3">
+            <label>優先度</label>
+            <select id="fPriority">
+              <option>高</option>
+              <option selected>中</option>
+              <option>低</option>
+            </select>
+          </div>
+          <div class="field-3">
+            <label>責任者</label>
+            <input id="fOwner" type="text" placeholder="例: 企画課 山本" />
+          </div>
+          <div class="field-3">
+            <label>目標期限</label>
+            <input id="fTargetDate" type="date" />
+          </div>
+          <div class="field-3">
+            <label>予算感(円)</label>
+            <input id="fBudget" type="number" min="0" step="10000" placeholder="例: 5000000" />
+          </div>
+          <div class="field-12">
+            <label>やりたいこと(政策の目的・実現したい姿)</label>
+            <textarea id="fGoal" placeholder="誰にどのような変化をもたらしたいか、できるだけ具体的に記入"></textarea>
+          </div>
+          <div class="field-12">
+            <label>要点まとめ(調査資料を踏まえた暫定結論)</label>
+            <textarea id="fSummary" placeholder="資料を整理して、判断材料を短くまとめる"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="list-head">
+          <h3 style="margin:0">条例・法令・参考資料</h3>
+          <button class="btn btn-soft" id="addLawBtn">+ 資料を追加</button>
+        </div>
+        <p class="hint">条例、法令、ガイドライン、議事録、他自治体事例などを登録できます。</p>
+        <div class="mini-list" id="lawsList"></div>
+      </section>
+
+      <section class="card">
+        <div class="list-head">
+          <h3 style="margin:0">実行タスク(やること)</h3>
+          <button class="btn btn-soft" id="addActionBtn">+ タスクを追加</button>
+        </div>
+        <p class="hint">調査、会議設定、試算作成、ヒアリングなどの進行タスクを管理します。</p>
+        <div class="mini-list" id="actionsList"></div>
+      </section>
+
+      <section class="card">
+        <div class="list-head">
+          <h3 style="margin:0">関係者</h3>
+          <button class="btn btn-soft" id="addPersonBtn">+ 関係者を追加</button>
+        </div>
+        <p class="hint">関係部署、外部有識者、住民代表などを登録します。</p>
+        <div class="mini-list" id="peopleList"></div>
+      </section>
+
+      <section class="card">
+        <div class="list-head">
+          <h3 style="margin:0">論点・リスク・懸念</h3>
+          <button class="btn btn-soft" id="addRiskBtn">+ 論点を追加</button>
+        </div>
+        <p class="hint">実施の障壁、反対論点、予算や法令上の制約を整理します。</p>
+        <div class="mini-list" id="risksList"></div>
+        <div class="divider"></div>
+        <label>メモ</label>
+        <textarea id="fNotes" placeholder="打ち合わせメモ、次回確認事項、補足など"></textarea>
+        <div class="footnote">保存後はこのブラウザにデータが保持されます。必要に応じてJSON出力でバックアップしてください。</div>
+      </section>
+    </main>
+  </div>
+
+  <input type="file" id="importFileInput" accept="application/json" style="display:none" />
+
+  <script>
+    const STORAGE_KEY = 'policy_management_v1';
+
+    const emptyPolicy = () => ({
+      id: Date.now(),
+      title: '新しい政策',
+      category: '福祉',
+      stage: '構想',
+      priority: '中',
+      owner: '',
+      targetDate: '',
+      budget: '',
+      goal: '',
+      summary: '',
+      notes: '',
+      laws: [],
+      actions: [],
+      people: [],
+      risks: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    let state = loadState();
+    if (!state.policies.length) {
+      const sample = emptyPolicy();
+      sample.title = '子ども見守り体制の強化';
+      sample.goal = '登下校時の見守り体制を強化し、事故と犯罪リスクを低減する';
+      sample.summary = '防犯カメラ設置基準と運用要領を整理。地域ボランティアとの連携手順を確立する。';
+      sample.laws.push({ type: '条例', name: '地域安全条例', url: '', note: '対象区域と責務を確認' });
+      sample.actions.push({ task: '先進自治体ヒアリング', due: '', owner: '企画課', status: '未着手' });
+      sample.people.push({ name: '教育委員会', role: '連携部署', contact: '', influence: '高' });
+      sample.risks.push({ point: '運用負担の増加', level: '中', response: '地区ごとに負荷分散' });
+      state.policies = [sample];
+      state.selectedId = sample.id;
+      persist();
+    }
+
+    const el = id => document.getElementById(id);
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { policies: [], selectedId: null };
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed.policies)) return { policies: [], selectedId: null };
+        return {
+          policies: parsed.policies,
+          selectedId: parsed.selectedId || parsed.policies[0]?.id || null,
+        };
+      } catch (e) {
+        return { policies: [], selectedId: null };
+      }
+    }
+
+    function persist() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function selectedPolicy() {
+      return state.policies.find(p => p.id === state.selectedId) || null;
+    }
+
+    function renderPolicyList() {
+      const box = el('policyList');
+      const q = el('policySearch').value.trim().toLowerCase();
+      const list = state.policies.filter(p => {
+        if (!q) return true;
+        return (p.title || '').toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q);
+      });
+      if (!list.length) {
+        box.innerHTML = '<div class="hint" style="padding:8px;">該当する政策がありません</div>';
+        return;
+      }
+      box.innerHTML = list.map(p => `
+        <div class="policy-item ${p.id === state.selectedId ? 'active' : ''}" data-id="${p.id}">
+          <div class="policy-title">${escapeHtml(p.title || '無題')}</div>
+          <div class="policy-sub">
+            <span>${escapeHtml(p.category || '')}</span>
+            <span>${escapeHtml(p.stage || '')}</span>
+            <span>優先:${escapeHtml(p.priority || '')}</span>
+          </div>
+        </div>
+      `).join('');
+      box.querySelectorAll('.policy-item').forEach(node => {
+        node.addEventListener('click', () => {
+          state.selectedId = Number(node.dataset.id);
+          renderAll();
+        });
+      });
+    }
+
+    function renderStats() {
+      const totalPolicies = state.policies.length;
+      const totalLaws = state.policies.reduce((acc, p) => acc + (p.laws?.length || 0), 0);
+      const totalPeople = state.policies.reduce((acc, p) => acc + (p.people?.length || 0), 0);
+      const totalActions = state.policies.reduce((acc, p) => acc + (p.actions?.length || 0), 0);
+      el('statPolicies').textContent = totalPolicies;
+      el('statLaws').textContent = totalLaws;
+      el('statPeople').textContent = totalPeople;
+      el('statActions').textContent = totalActions;
+    }
+
+    function renderForm() {
+      const p = selectedPolicy();
+      if (!p) return;
+      el('currentPolicyTitle').textContent = p.title || '無題の政策';
+      el('fTitle').value = p.title || '';
+      el('fCategory').value = p.category || '福祉';
+      el('fStage').value = p.stage || '構想';
+      el('fPriority').value = p.priority || '中';
+      el('fOwner').value = p.owner || '';
+      el('fTargetDate').value = p.targetDate || '';
+      el('fBudget').value = p.budget || '';
+      el('fGoal').value = p.goal || '';
+      el('fSummary').value = p.summary || '';
+      el('fNotes').value = p.notes || '';
+
+      renderMiniList('lawsList', p.laws || [], lawRowTemplate, updateLaw, removeLaw);
+      renderMiniList('actionsList', p.actions || [], actionRowTemplate, updateAction, removeAction);
+      renderMiniList('peopleList', p.people || [], personRowTemplate, updatePerson, removePerson);
+      renderMiniList('risksList', p.risks || [], riskRowTemplate, updateRisk, removeRisk);
+    }
+
+    function renderMiniList(containerId, data, templateFn, updateFn, removeFn) {
+      const container = el(containerId);
+      if (!data.length) {
+        container.innerHTML = '<div class="hint">まだ登録がありません</div>';
+        return;
+      }
+      container.innerHTML = data.map((item, idx) => templateFn(item, idx)).join('');
+      container.querySelectorAll('[data-update]').forEach(node => {
+        node.addEventListener('input', e => updateFn(Number(node.dataset.idx), node.dataset.key, e.target.value));
+        node.addEventListener('change', e => updateFn(Number(node.dataset.idx), node.dataset.key, e.target.value));
+      });
+      container.querySelectorAll('[data-remove]').forEach(node => {
+        node.addEventListener('click', () => removeFn(Number(node.dataset.idx)));
+      });
+    }
+
+    function lawRowTemplate(item, idx) {
+      return `
+        <div class="mini-row">
+          <div class="row">
+            <div class="field-3"><label>区分</label><input data-update data-idx="${idx}" data-key="type" value="${escapeAttr(item.type || '')}" /></div>
+            <div class="field-4"><label>資料名</label><input data-update data-idx="${idx}" data-key="name" value="${escapeAttr(item.name || '')}" /></div>
+            <div class="field-4"><label>URL/保存先</label><input data-update data-idx="${idx}" data-key="url" value="${escapeAttr(item.url || '')}" /></div>
+            <div class="field-1"><button class="btn btn-danger" data-remove data-idx="${idx}">削除</button></div>
+            <div class="field-12"><label>要点</label><input data-update data-idx="${idx}" data-key="note" value="${escapeAttr(item.note || '')}" /></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function actionRowTemplate(item, idx) {
+      return `
+        <div class="mini-row">
+          <div class="row">
+            <div class="field-5"><label>タスク</label><input data-update data-idx="${idx}" data-key="task" value="${escapeAttr(item.task || '')}" /></div>
+            <div class="field-2"><label>期限</label><input type="date" data-update data-idx="${idx}" data-key="due" value="${escapeAttr(item.due || '')}" /></div>
+            <div class="field-2"><label>担当</label><input data-update data-idx="${idx}" data-key="owner" value="${escapeAttr(item.owner || '')}" /></div>
+            <div class="field-2"><label>状態</label><select data-update data-idx="${idx}" data-key="status">
+              ${optionHtml(['未着手','進行中','完了','保留'], item.status || '未着手')}
+            </select></div>
+            <div class="field-1"><button class="btn btn-danger" data-remove data-idx="${idx}">削除</button></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function personRowTemplate(item, idx) {
+      return `
+        <div class="mini-row">
+          <div class="row">
+            <div class="field-3"><label>氏名/組織</label><input data-update data-idx="${idx}" data-key="name" value="${escapeAttr(item.name || '')}" /></div>
+            <div class="field-3"><label>役割</label><input data-update data-idx="${idx}" data-key="role" value="${escapeAttr(item.role || '')}" /></div>
+            <div class="field-3"><label>連絡先</label><input data-update data-idx="${idx}" data-key="contact" value="${escapeAttr(item.contact || '')}" /></div>
+            <div class="field-2"><label>影響度</label><select data-update data-idx="${idx}" data-key="influence">
+              ${optionHtml(['高','中','低'], item.influence || '中')}
+            </select></div>
+            <div class="field-1"><button class="btn btn-danger" data-remove data-idx="${idx}">削除</button></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function riskRowTemplate(item, idx) {
+      return `
+        <div class="mini-row">
+          <div class="row">
+            <div class="field-5"><label>論点・懸念事項</label><input data-update data-idx="${idx}" data-key="point" value="${escapeAttr(item.point || '')}" /></div>
+            <div class="field-2"><label>重要度</label><select data-update data-idx="${idx}" data-key="level">
+              ${optionHtml(['高','中','低'], item.level || '中')}
+            </select></div>
+            <div class="field-4"><label>対応策</label><input data-update data-idx="${idx}" data-key="response" value="${escapeAttr(item.response || '')}" /></div>
+            <div class="field-1"><button class="btn btn-danger" data-remove data-idx="${idx}">削除</button></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function optionHtml(options, current) {
+      return options.map(v => `<option ${v === current ? 'selected' : ''}>${v}</option>`).join('');
+    }
+
+    function updateSelectedBasic() {
+      const p = selectedPolicy();
+      if (!p) return;
+      p.title = el('fTitle').value.trim() || '無題の政策';
+      p.category = el('fCategory').value;
+      p.stage = el('fStage').value;
+      p.priority = el('fPriority').value;
+      p.owner = el('fOwner').value.trim();
+      p.targetDate = el('fTargetDate').value;
+      p.budget = el('fBudget').value;
+      p.goal = el('fGoal').value.trim();
+      p.summary = el('fSummary').value.trim();
+      p.notes = el('fNotes').value.trim();
+      p.updatedAt = new Date().toISOString();
+    }
+
+    function updateArrayItem(key, idx, field, value) {
+      const p = selectedPolicy();
+      if (!p || !p[key] || !p[key][idx]) return;
+      p[key][idx][field] = value;
+      p.updatedAt = new Date().toISOString();
+      persist();
+      renderStats();
+      renderPolicyList();
+    }
+
+    const updateLaw = (idx, field, value) => updateArrayItem('laws', idx, field, value);
+    const updateAction = (idx, field, value) => updateArrayItem('actions', idx, field, value);
+    const updatePerson = (idx, field, value) => updateArrayItem('people', idx, field, value);
+    const updateRisk = (idx, field, value) => updateArrayItem('risks', idx, field, value);
+
+    function removeArrayItem(key, idx) {
+      const p = selectedPolicy();
+      if (!p || !p[key]) return;
+      p[key].splice(idx, 1);
+      p.updatedAt = new Date().toISOString();
+      persist();
+      renderAll();
+    }
+
+    const removeLaw = idx => removeArrayItem('laws', idx);
+    const removeAction = idx => removeArrayItem('actions', idx);
+    const removePerson = idx => removeArrayItem('people', idx);
+    const removeRisk = idx => removeArrayItem('risks', idx);
+
+    function addItem(key, item) {
+      const p = selectedPolicy();
+      if (!p) return;
+      p[key].push(item);
+      p.updatedAt = new Date().toISOString();
+      persist();
+      renderAll();
+    }
+
+    function addPolicy() {
+      const item = emptyPolicy();
+      state.policies.unshift(item);
+      state.selectedId = item.id;
+      persist();
+      renderAll();
+    }
+
+    function savePolicy() {
+      updateSelectedBasic();
+      persist();
+      renderAll();
+      alert('保存しました');
+    }
+
+    function exportJson() {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'policy_management_backup.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importJson(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result || ''));
+          if (!Array.isArray(parsed.policies)) throw new Error('形式が不正です');
+          state = {
+            policies: parsed.policies,
+            selectedId: parsed.selectedId || parsed.policies[0]?.id || null,
+          };
+          persist();
+          renderAll();
+          alert('取込が完了しました');
+        } catch (e) {
+          alert('JSONの取込に失敗しました');
+        }
+      };
+      reader.readAsText(file, 'utf-8');
+    }
+
+    function renderAll() {
+      if (!selectedPolicy() && state.policies.length) {
+        state.selectedId = state.policies[0].id;
+      }
+      renderPolicyList();
+      renderStats();
+      renderForm();
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value).replace(/`/g, '&#96;');
+    }
+
+    el('addPolicyBtn').addEventListener('click', addPolicy);
+    el('policySearch').addEventListener('input', renderPolicyList);
+    el('savePolicyBtn').addEventListener('click', savePolicy);
+    el('exportBtn').addEventListener('click', exportJson);
+    el('importBtn').addEventListener('click', () => el('importFileInput').click());
+    el('importFileInput').addEventListener('change', e => {
+      const file = e.target.files?.[0];
+      if (file) importJson(file);
+      e.target.value = '';
+    });
+
+    el('fTitle').addEventListener('input', () => { updateSelectedBasic(); persist(); renderPolicyList(); el('currentPolicyTitle').textContent = el('fTitle').value || '無題の政策'; });
+    ['fCategory','fStage','fPriority','fOwner','fTargetDate','fBudget','fGoal','fSummary','fNotes'].forEach(id => {
+      el(id).addEventListener('input', () => { updateSelectedBasic(); persist(); renderStats(); });
+      el(id).addEventListener('change', () => { updateSelectedBasic(); persist(); renderStats(); });
+    });
+
+    el('addLawBtn').addEventListener('click', () => addItem('laws', { type: '法令', name: '', url: '', note: '' }));
+    el('addActionBtn').addEventListener('click', () => addItem('actions', { task: '', due: '', owner: '', status: '未着手' }));
+    el('addPersonBtn').addEventListener('click', () => addItem('people', { name: '', role: '', contact: '', influence: '中' }));
+    el('addRiskBtn').addEventListener('click', () => addItem('risks', { point: '', level: '中', response: '' }));
+
+    el('backToCasesBtn').addEventListener('click', () => {
+      window.location.href = 'index.html';
+    });
+
+    renderAll();
+  </script>
+</body>
+</html>
