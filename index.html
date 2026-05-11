@@ -161,6 +161,8 @@
     .btn-primary:hover { background: var(--primary-dk); box-shadow: 0 2px 8px rgba(37,99,235,.3); }
     .btn-ghost { background: transparent; color: var(--text-sub); border: 1px solid var(--border); }
     .btn-ghost:hover { background: var(--bg); }
+    #openTimelineBtn { background: #dcfce7; color: #166534; border-color: #86efac; }
+    #openTimelineBtn:hover { background: #bbf7d0; }
 
     /* ===== Page content ===== */
     .page { padding: 28px; flex: 1; }
@@ -485,7 +487,12 @@
     .modal-foot {
       padding: 16px 24px;
       border-top: 1px solid var(--border);
-      display: flex; justify-content: flex-end; gap: 10px;
+      display: flex; justify-content: flex-end; gap: 12px;
+    }
+    .modal-foot .btn {
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 600;
     }
     .sub-modal {
       width: 860px;
