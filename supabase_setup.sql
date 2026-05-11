@@ -186,5 +186,181 @@ create policy "allow_all_for_anon_activities" on case_activities
   using (true)
   with check (true);
 
+-- 4.1 政策管理テーブル
+create table if not exists policy_projects (
+  id          bigint generated always as identity primary key,
+  title       text        not null default '新しい政策',
+  category    text        not null default 'その他',
+  stage       text        not null default '構想',
+  priority    text        not null default '中'
+                check (priority in ('高','中','低')),
+  owner       text        not null default '',
+  target_date date,
+  budget      bigint,
+  goal        text        not null default '',
+  summary     text        not null default '',
+  notes       text        not null default '',
+  laws        jsonb       not null default '[]'::jsonb,
+  actions     jsonb       not null default '[]'::jsonb,
+  people      jsonb       not null default '[]'::jsonb,
+  risks       jsonb       not null default '[]'::jsonb,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+create table if not exists policy_documents (
+  id          bigint generated always as identity primary key,
+  policy_id   bigint      not null references policy_projects(id) on delete cascade,
+  sort_order  integer     not null default 0,
+  doc_type    text        not null default '法令',
+  name        text        not null default '',
+  url         text        not null default '',
+  note        text        not null default '',
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+create table if not exists policy_actions (
+  id          bigint generated always as identity primary key,
+  policy_id   bigint      not null references policy_projects(id) on delete cascade,
+  sort_order  integer     not null default 0,
+  task        text        not null default '',
+  due         date,
+  owner       text        not null default '',
+  status      text        not null default '未着手'
+                check (status in ('未着手','進行中','完了','保留')),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+create table if not exists policy_people (
+  id          bigint generated always as identity primary key,
+  policy_id   bigint      not null references policy_projects(id) on delete cascade,
+  sort_order  integer     not null default 0,
+  name        text        not null default '',
+  role        text        not null default '',
+  contact     text        not null default '',
+  influence   text        not null default '中'
+                check (influence in ('高','中','低')),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+create table if not exists policy_risks (
+  id          bigint generated always as identity primary key,
+  policy_id   bigint      not null references policy_projects(id) on delete cascade,
+  sort_order  integer     not null default 0,
+  point       text        not null default '',
+  level       text        not null default '中'
+                check (level in ('高','中','低')),
+  response    text        not null default '',
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+create index if not exists idx_policy_documents_policy_id on policy_documents(policy_id, sort_order);
+create index if not exists idx_policy_actions_policy_id on policy_actions(policy_id, sort_order);
+create index if not exists idx_policy_people_policy_id on policy_people(policy_id, sort_order);
+create index if not exists idx_policy_risks_policy_id on policy_risks(policy_id, sort_order);
+
+alter table policy_projects add column if not exists category text not null default 'その他';
+alter table policy_projects add column if not exists stage text not null default '構想';
+alter table policy_projects add column if not exists priority text not null default '中';
+alter table policy_projects add column if not exists owner text not null default '';
+alter table policy_projects add column if not exists target_date date;
+alter table policy_projects add column if not exists budget bigint;
+alter table policy_projects add column if not exists goal text not null default '';
+alter table policy_projects add column if not exists summary text not null default '';
+alter table policy_projects add column if not exists notes text not null default '';
+alter table policy_projects add column if not exists laws jsonb not null default '[]'::jsonb;
+alter table policy_projects add column if not exists actions jsonb not null default '[]'::jsonb;
+alter table policy_projects add column if not exists people jsonb not null default '[]'::jsonb;
+alter table policy_projects add column if not exists risks jsonb not null default '[]'::jsonb;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'policy_projects_priority_check'
+  ) then
+    alter table policy_projects
+      add constraint policy_projects_priority_check
+      check (priority in ('高','中','低'));
+  end if;
+end $$;
+
+create or replace trigger policy_projects_updated_at
+  before update on policy_projects
+  for each row execute function set_updated_at();
+
+create or replace trigger policy_documents_updated_at
+  before update on policy_documents
+  for each row execute function set_updated_at();
+
+create or replace trigger policy_actions_updated_at
+  before update on policy_actions
+  for each row execute function set_updated_at();
+
+create or replace trigger policy_people_updated_at
+  before update on policy_people
+  for each row execute function set_updated_at();
+
+create or replace trigger policy_risks_updated_at
+  before update on policy_risks
+  for each row execute function set_updated_at();
+
+alter table policy_projects enable row level security;
+alter table policy_documents enable row level security;
+alter table policy_actions enable row level security;
+alter table policy_people enable row level security;
+alter table policy_risks enable row level security;
+
+grant select, insert, update, delete on table public.policy_projects to anon, authenticated;
+grant usage, select on sequence public.policy_projects_id_seq to anon, authenticated;
+grant select, insert, update, delete on table public.policy_documents to anon, authenticated;
+grant select, insert, update, delete on table public.policy_actions to anon, authenticated;
+grant select, insert, update, delete on table public.policy_people to anon, authenticated;
+grant select, insert, update, delete on table public.policy_risks to anon, authenticated;
+grant usage, select on sequence public.policy_documents_id_seq to anon, authenticated;
+grant usage, select on sequence public.policy_actions_id_seq to anon, authenticated;
+grant usage, select on sequence public.policy_people_id_seq to anon, authenticated;
+grant usage, select on sequence public.policy_risks_id_seq to anon, authenticated;
+
+drop policy if exists "allow_all_for_anon_policy_projects" on policy_projects;
+create policy "allow_all_for_anon_policy_projects" on policy_projects
+  for all
+  to anon, authenticated
+  using (true)
+  with check (true);
+
+drop policy if exists "allow_all_for_anon_policy_documents" on policy_documents;
+create policy "allow_all_for_anon_policy_documents" on policy_documents
+  for all
+  to anon, authenticated
+  using (true)
+  with check (true);
+
+drop policy if exists "allow_all_for_anon_policy_actions" on policy_actions;
+create policy "allow_all_for_anon_policy_actions" on policy_actions
+  for all
+  to anon, authenticated
+  using (true)
+  with check (true);
+
+drop policy if exists "allow_all_for_anon_policy_people" on policy_people;
+create policy "allow_all_for_anon_policy_people" on policy_people
+  for all
+  to anon, authenticated
+  using (true)
+  with check (true);
+
+drop policy if exists "allow_all_for_anon_policy_risks" on policy_risks;
+create policy "allow_all_for_anon_policy_risks" on policy_risks
+  for all
+  to anon, authenticated
+  using (true)
+  with check (true);
+
 -- 5. サンプルデータ
 -- 必要な場合のみ、別途 insert を実行してください。
