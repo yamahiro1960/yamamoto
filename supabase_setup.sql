@@ -8,6 +8,7 @@ create table if not exists cases (
   id          bigint generated always as identity primary key,
   name        text        not null,
   client      text        not null,
+  requested_to text       not null default '',
   assignee    text        not null default '未割当',
   status      text        not null default '新規'
                 check (status in ('新規','進行中','保留','完了','キャンセル')),
@@ -30,6 +31,7 @@ create table if not exists cases (
 );
 
 alter table cases add column if not exists work_status text not null default '未着手';
+alter table cases add column if not exists requested_to text not null default '';
 alter table cases add column if not exists photo_url text not null default '';
 alter table cases add column if not exists attachment_url text not null default '';
 alter table cases add column if not exists location_address text not null default '';
@@ -57,6 +59,8 @@ create table if not exists case_activities (
   case_id      bigint      not null references cases(id) on delete cascade,
   performed_on date        not null,
   title        text        not null,
+  requested_to text       not null default '',
+  assignee     text        not null default '',
   work_status  text        not null default '未着手'
                 check (work_status in ('未着手','進行中','完了','保留')),
   photo_url    text        not null default '',
@@ -70,6 +74,8 @@ create table if not exists case_activities (
 );
 
 alter table case_activities add column if not exists work_status text not null default '未着手';
+alter table case_activities add column if not exists requested_to text not null default '';
+alter table case_activities add column if not exists assignee text not null default '';
 alter table case_activities add column if not exists photo_url text not null default '';
 alter table case_activities add column if not exists attachment_url text not null default '';
 alter table case_activities add column if not exists is_deleted boolean not null default false;

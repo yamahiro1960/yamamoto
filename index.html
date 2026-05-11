@@ -732,7 +732,7 @@
     <div class="toolbar">
       <div class="search-box">
         <span>🔍</span>
-        <input type="text" id="searchInput" placeholder="案件名・顧客名・担当者で検索…" />
+        <input type="text" id="searchInput" placeholder="案件名・依頼元・依頼先担当者で検索…" />
       </div>
       <select class="filter-select" id="statusFilter">
         <option value="">すべてのステータス</option>
@@ -769,8 +769,8 @@
             <tr>
               <th>案件ID</th>
               <th>案件名</th>
-              <th>顧客名</th>
-              <th>担当者</th>
+              <th>依頼元</th>
+              <th>依頼先担当者</th>
               <th>ステータス</th>
               <th>作業</th>
               <th>優先度</th>
@@ -802,13 +802,17 @@
         <label>案件名 <span style="color:var(--danger)">*</span></label>
         <input type="text" id="fName" placeholder="例：〇〇システム開発" />
       </div>
+      <div class="form-group">
+        <label>依頼元 <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="fClient" placeholder="例：株式会社○○" />
+      </div>
       <div class="form-row">
         <div class="form-group">
-          <label>顧客名 <span style="color:var(--danger)">*</span></label>
-          <input type="text" id="fClient" placeholder="例：株式会社○○" />
+          <label>依頼先</label>
+          <input type="text" id="fRequestedTo" placeholder="例：〇〇部門、営業部" />
         </div>
         <div class="form-group">
-          <label>担当者</label>
+          <label>依頼先担当者</label>
           <input type="text" id="fAssignee" placeholder="例：鈴木 一郎" />
         </div>
       </div>
@@ -928,8 +932,12 @@
             <input type="text" id="tTitle" placeholder="例：現地確認を実施" />
           </div>
           <div class="form-group">
-            <label>実施者</label>
-            <input type="text" id="tAuthor" placeholder="例：高橋 幸夫" />
+            <label>依頼先</label>
+            <input type="text" id="tRequestedTo" placeholder="例：〇〇部門、営業部" />
+          </div>
+          <div class="form-group">
+            <label>依頼先担当者</label>
+            <input type="text" id="tAssignee" placeholder="例：高橋 幸夫" />
           </div>
           <div class="form-group">
             <label>作業ステータス</label>
@@ -1568,7 +1576,7 @@
       document.getElementById('modalTitle').textContent = '新規案件登録';
       document.getElementById('saveBtn').textContent = '登録する';
       document.getElementById('openTimelineBtn').classList.add('hidden');
-      ['fName', 'fClient', 'fAssignee', 'fStartDate', 'fDeadline', 'fNote', 'fPhotoUrl', 'fAttachmentUrl', 'fLocationAddress', 'fLatLng', 'fMapUrl'].forEach(id => document.getElementById(id).value = '');
+      ['fName', 'fClient', 'fRequestedTo', 'fAssignee', 'fStartDate', 'fDeadline', 'fNote', 'fPhotoUrl', 'fAttachmentUrl', 'fLocationAddress', 'fLatLng', 'fMapUrl'].forEach(id => document.getElementById(id).value = '');
       setPhotoPreview('f', '');
       document.getElementById('fStatus').value   = '新規';
       document.getElementById('fWorkStatus').value = '未着手';
@@ -1591,6 +1599,7 @@
     document.getElementById('openTimelineBtn').classList.remove('hidden');
     document.getElementById('fName').value      = c.name;
     document.getElementById('fClient').value    = c.client;
+    document.getElementById('fRequestedTo').value = c.requested_to || '';
     document.getElementById('fAssignee').value  = c.assignee || '';
     document.getElementById('fStatus').value    = c.status;
     document.getElementById('fWorkStatus').value = c.work_status || '未着手';
@@ -1620,7 +1629,8 @@
     document.getElementById('timelineTitle').textContent = `案件実施履歴: ${c.name}`;
     document.getElementById('tPerformedOn').value = new Date().toISOString().slice(0, 10);
     document.getElementById('tTitle').value = '';
-    document.getElementById('tAuthor').value = c.assignee || '';
+    document.getElementById('tRequestedTo').value = c.requested_to || '';
+    document.getElementById('tAssignee').value = c.assignee || '';
     document.getElementById('tWorkStatus').value = '未着手';
     document.getElementById('tPhotoUrl').value = '';
     setPhotoPreview('t', '');
@@ -1647,7 +1657,7 @@
           ${item.is_deleted ? deletedBadge('削除待ち') : `<span class="work-status work-status-${workStatusClass[item.work_status] || 'notstarted'}">${item.work_status || '未着手'}</span>`}
           <button class="action-btn" onclick="removeTimeline(${item.id})" title="${item.is_deleted ? '完全削除' : '削除フラグ'}">🗑</button>
         </div>
-        <div class="timeline-meta">${item.performed_on} / ${item.author || '未設定'}${item.deleted_at ? ` / ${item.deleted_at.slice(0, 16).replace('T', ' ')}` : ''}</div>
+        <div class="timeline-meta">${item.performed_on} / ${item.requested_to || '—'} - ${item.assignee || '—'}${item.deleted_at ? ` / ${item.deleted_at.slice(0, 16).replace('T', ' ')}` : ''}</div>
         <div class="timeline-item-detail">${item.detail || ''}</div>
         <div class="timeline-links">
           ${item.photo_url ? `<button class="action-btn action-btn-active" onclick="openPhotoViewer('${item.photo_url}', '写真 — ${item.title}')" style="font-size:22px;padding:4px 6px" title="写真を見る">📷</button>` : ''}
@@ -1666,7 +1676,8 @@
     }
     const performedOn = document.getElementById('tPerformedOn').value;
     const title = document.getElementById('tTitle').value.trim();
-    const author = document.getElementById('tAuthor').value.trim() || '未設定';
+    const requestedTo = document.getElementById('tRequestedTo').value.trim() || '';
+    const assignee = document.getElementById('tAssignee').value.trim() || '';
     const workStatus = document.getElementById('tWorkStatus').value;
 
     if (!performedOn || !title) {
@@ -1684,7 +1695,8 @@
         case_id: timelineCaseId,
         performed_on: performedOn,
         title,
-        author,
+        requested_to: requestedTo,
+        assignee,
         work_status: workStatus,
         photo_url: photoUrl,
         attachment_url: attachmentUrl,
@@ -1722,7 +1734,7 @@
     if (!requireAuth()) return;
     const name   = document.getElementById('fName').value.trim();
     const client = document.getElementById('fClient').value.trim();
-    if (!name || !client) { showToast('⚠️', '案件名と顧客名は必須です'); return; }
+    if (!name || !client) { showToast('⚠️', '案件名と依頼元は必須です'); return; }
     const latLng = parseLatLngPair(document.getElementById('fLatLng').value);
     if (!latLng.isValid) {
       showToast('⚠️', '緯度経度は「緯度, 経度」の形式で入力してください');
@@ -1735,6 +1747,7 @@
       const payload = {
         name,
         client,
+        requested_to: document.getElementById('fRequestedTo').value.trim() || '',
         assignee: document.getElementById('fAssignee').value.trim() || '未割当',
         status:   document.getElementById('fStatus').value,
         work_status: document.getElementById('fWorkStatus').value,
@@ -1795,11 +1808,12 @@
 
   // ===== Export (CSV) =====
   function exportCSV() {
-    const header = ['案件ID', '案件名', '顧客名', '担当者', 'ステータス', '作業ステータス', '優先度', '削除フラグ', '削除日時', '場所', '緯度', '経度', '地図URL', '写真URL', '添付ファイルURL', '期限', '備考'];
+    const header = ['案件ID', '案件名', '依頼元', '依頼先', '依頼先担当者', 'ステータス', '作業ステータス', '優先度', '削除フラグ', '削除日時', '場所', '緯度', '経度', '地図URL', '写真URL', '添付ファイルURL', '期限', '備考'];
     const rows   = cases.map(c => [
       fmtId(c.id),
       c.name,
       c.client,
+      c.requested_to || '',
       c.assignee,
       c.status,
       c.work_status || '',
