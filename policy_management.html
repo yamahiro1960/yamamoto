@@ -280,6 +280,26 @@
       .policy-list { max-height: 240px; }
       .stats { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
     }
+    @media (max-width: 768px) {
+      .layout { padding: 10px; gap: 10px; }
+      .left-body { overflow: hidden; max-height: 0; transition: max-height .3s ease; }
+      .left.expanded .left-body { max-height: 600px; }
+      .left-toggle-btn {
+        background: none;
+        border: none;
+        font-size: 18px;
+        cursor: pointer;
+        color: var(--text);
+        padding: 4px 8px;
+        border-radius: 6px;
+        transition: background .15s;
+      }
+      .left-toggle-btn:hover { background: var(--bg); }
+    }
+    @media (min-width: 769px) {
+      .left-toggle-btn { display: none; }
+      .left-body { display: contents; }
+    }
     @media (max-width: 700px) {
       .field-3, .field-4, .field-6, .field-8, .field-12 { grid-column: span 12; }
       .topbar h2 { font-size: 18px; }
@@ -288,16 +308,21 @@
 </head>
 <body>
   <div class="layout">
-    <section class="panel left">
+    <section class="panel left" id="leftPanel">
       <div class="left-head">
         <h1>政策管理</h1>
-        <button class="btn btn-soft" id="addPolicyBtn">+ 新規</button>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn btn-soft" id="addPolicyBtn">+ 新規</button>
+          <button class="left-toggle-btn" id="leftToggleBtn" title="一覧を開閉">▼</button>
+        </div>
       </div>
-      <div class="left-tools">
-        <input id="policySearch" type="text" placeholder="政策名・カテゴリで検索" />
-        <button class="btn" id="backToCasesBtn">案件管理へ戻る</button>
+      <div class="left-body">
+        <div class="left-tools">
+          <input id="policySearch" type="text" placeholder="政策名・カテゴリで検索" />
+          <button class="btn" id="backToCasesBtn">案件管理へ戻る</button>
+        </div>
+        <div class="policy-list" id="policyList"></div>
       </div>
-      <div class="policy-list" id="policyList"></div>
     </section>
 
     <main class="panel right">
@@ -1084,6 +1109,25 @@
     });
 
     loadPolicies();
+
+    // ===== Mobile left panel toggle =====
+    const leftPanel     = document.getElementById('leftPanel');
+    const leftToggleBtn = document.getElementById('leftToggleBtn');
+    function isMobile() { return window.innerWidth <= 768; }
+    function updateToggle() {
+      if (!isMobile()) return;
+      const expanded = leftPanel.classList.contains('expanded');
+      leftToggleBtn.textContent = expanded ? '▲' : '▼';
+      leftToggleBtn.title = expanded ? '一覧を閉じる' : '一覧を開く';
+    }
+    leftToggleBtn.addEventListener('click', () => {
+      leftPanel.classList.toggle('expanded');
+      updateToggle();
+    });
+    window.addEventListener('resize', () => {
+      if (!isMobile()) leftPanel.classList.remove('expanded');
+    });
+    updateToggle();
   </script>
 </body>
 </html>

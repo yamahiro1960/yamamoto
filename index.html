@@ -41,7 +41,31 @@
       position: fixed;
       top: 0; left: 0;
       height: 100vh;
-      z-index: 100;
+      z-index: 200;
+      transition: transform .25s ease;
+    }
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 190;
+    }
+    .sidebar-overlay.open { display: block; }
+    .hamburger {
+      display: none;
+      position: fixed;
+      top: 14px; left: 12px;
+      z-index: 180;
+      background: #1e293b;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      width: 40px; height: 40px;
+      font-size: 20px;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
     }
     .sidebar-logo {
       height: var(--header-h);
@@ -634,6 +658,13 @@
     @media (max-width: 900px) {
       .timeline-layout { grid-template-columns: 1fr; }
     }
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(calc(-1 * var(--sidebar-w))); }
+      .sidebar.open { transform: translateX(0); }
+      .main-wrapper { margin-left: 0; }
+      .hamburger { display: flex; }
+      .header { padding: 0 12px 0 60px; }
+    }
 
     /* ===== Scrollbar ===== */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -643,8 +674,12 @@
 </head>
 <body>
 
+<!-- ===== Mobile overlay & hamburger ===== -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<button class="hamburger" id="hamburgerBtn" aria-label="メニュー">☰</button>
+
 <!-- ===== Sidebar ===== -->
-<aside class="sidebar">
+<aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <div class="logo-icon">📋</div>
     <span>案件管理</span>
@@ -1879,6 +1914,15 @@
 
   // ===== Init =====
   loadCases();
+
+  // ===== Mobile sidebar toggle =====
+  const hamburgerBtn = document.getElementById('hamburgerBtn');
+  const sidebarEl    = document.getElementById('sidebar');
+  const overlayEl    = document.getElementById('sidebarOverlay');
+  function openSidebar()  { sidebarEl.classList.add('open'); overlayEl.classList.add('open'); }
+  function closeSidebar() { sidebarEl.classList.remove('open'); overlayEl.classList.remove('open'); }
+  hamburgerBtn.addEventListener('click', () => sidebarEl.classList.contains('open') ? closeSidebar() : openSidebar());
+  overlayEl.addEventListener('click', closeSidebar);
 </script>
 </body>
 </html>
