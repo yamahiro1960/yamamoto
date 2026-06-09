@@ -167,6 +167,21 @@
       border-color: var(--primary);
       box-shadow: 0 2px 8px rgba(37,99,235,.22);
     }
+    .layout-switch {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      margin-left: auto;
+    }
+    .layout-switch .btn {
+      padding: 8px 14px;
+    }
+    .layout-switch .btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(37,99,235,.22);
+    }
 
     /* ===== Table ===== */
     .table-card {
@@ -220,6 +235,79 @@
       vertical-align: middle;
     }
     tbody td:first-child { padding-left: 20px; }
+    .tile-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
+      padding: 14px;
+    }
+    .case-tile {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      padding: 14px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: box-shadow .15s, transform .15s;
+    }
+    .case-tile:hover {
+      box-shadow: 0 8px 20px rgba(15, 23, 42, .08);
+      transform: translateY(-1px);
+    }
+    .case-tile.deleted {
+      background: #fff7ed;
+      border-color: #fdba74;
+    }
+    .case-tile-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .case-tile-id {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+    .case-tile-name {
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+    .case-tile-meta {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 6px 10px;
+      font-size: 13px;
+      color: var(--text);
+    }
+    .case-tile-meta dt {
+      color: var(--text-sub);
+      font-weight: 600;
+    }
+    .case-tile-meta dd {
+      margin: 0;
+      min-width: 0;
+      word-break: break-word;
+    }
+    .case-tile-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+      margin-top: 2px;
+    }
+    .tile-empty {
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      color: var(--text-sub);
+      text-align: center;
+      padding: 28px 12px;
+      margin: 14px;
+      font-size: 14px;
+    }
 
     /* ===== Status badges ===== */
     .badge {
@@ -674,6 +762,10 @@
         <button class="btn btn-ghost" id="showCompletedBtn" type="button">完了分の表示</button>
         <button class="btn btn-ghost active" id="showInProgressBtn" type="button">進行中表示</button>
       </div>
+      <div class="layout-switch">
+        <button class="btn btn-ghost active" id="tableLayoutBtn" type="button">表形式</button>
+        <button class="btn btn-ghost" id="tileLayoutBtn" type="button">タイル形式</button>
+      </div>
     </div>
 
     <!-- Table -->
@@ -682,7 +774,7 @@
         <h2>案件一覧</h2>
         <span class="count-badge" id="countBadge">0 件</span>
       </div>
-      <div style="overflow-x:auto">
+      <div id="tableViewWrap" style="overflow-x:auto">
         <table>
           <thead>
             <tr>
@@ -700,6 +792,9 @@
           </thead>
           <tbody id="tableBody"></tbody>
         </table>
+      </div>
+      <div id="tileViewWrap" class="hidden">
+        <div class="tile-grid" id="tileGrid"></div>
       </div>
       <div class="pagination">
         <span id="pageInfo"></span>
@@ -943,6 +1038,7 @@
   const PAGE_SIZE = 100;
   let currentPage = 1;
   let workViewMode = 'active';
+  let listLayoutMode = 'table';
   const pendingPhotoUploads = { f: null, t: null };
 
   // ===== Helpers =====
@@ -1372,6 +1468,10 @@
     if (loading) {
       document.getElementById('tableBody').innerHTML =
         `<tr><td colspan="10" style="text-align:center;color:var(--text-sub);padding:40px">⏳ 読み込み中…</td></tr>`;
+      const tileGrid = document.getElementById('tileGrid');
+      if (tileGrid) {
+        tileGrid.innerHTML = '<div class="tile-empty">⏳ 読み込み中…</div>';
+      }
     }
   }
   function setSaveLoading(loading) {
@@ -1422,6 +1522,13 @@
     renderTable();
   }
 
+  function setListLayoutMode(mode) {
+    listLayoutMode = mode === 'tile' ? 'tile' : 'table';
+    document.getElementById('tableLayoutBtn').classList.toggle('active', listLayoutMode === 'table');
+    document.getElementById('tileLayoutBtn').classList.toggle('active', listLayoutMode === 'tile');
+    renderTable();
+  }
+
   // ===== Render =====
   function render() {
     updateKPI();
@@ -1463,9 +1570,17 @@
       ? '0 件'
       : `${total} 件中 ${Math.min((currentPage - 1) * PAGE_SIZE + 1, total)}–${Math.min(currentPage * PAGE_SIZE, total)} 件表示`;
 
+    const tableWrap = document.getElementById('tableViewWrap');
+    const tileWrap = document.getElementById('tileViewWrap');
     const tbody = document.getElementById('tableBody');
+    const tileGrid = document.getElementById('tileGrid');
+    const showTile = listLayoutMode === 'tile';
+    tableWrap.classList.toggle('hidden', showTile);
+    tileWrap.classList.toggle('hidden', !showTile);
+
     if (slice.length === 0) {
       tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-sub);padding:40px">該当する案件が見つかりません</td></tr>`;
+      tileGrid.innerHTML = '<div class="tile-empty">該当する案件が見つかりません</div>';
     } else {
       tbody.innerHTML = slice.map(c => `
         <tr class="${c.is_deleted ? 'deleted-row' : ''}" onclick="openEdit(${c.id})">
@@ -1486,6 +1601,32 @@
             <button class="action-btn" onclick="deleteCase(${c.id})" title="${c.is_deleted ? '完全削除' : '削除フラグ'}">🗑</button>
           </td>
         </tr>`).join('');
+
+      tileGrid.innerHTML = slice.map(c => `
+        <article class="case-tile ${c.is_deleted ? 'deleted' : ''}" onclick="openEdit(${c.id})">
+          <div class="case-tile-head">
+            <div>
+              <div class="case-tile-id">${fmtId(c.id)}</div>
+              <div class="case-tile-name">${c.name}</div>
+            </div>
+            ${c.is_deleted ? deletedBadge('削除待ち') : statusBadge(c.status)}
+          </div>
+          <dl class="case-tile-meta">
+            <dt>依頼元</dt><dd>${c.client}</dd>
+            <dt>依頼先担当</dt><dd>${c.assignee || '—'}</dd>
+            <dt>作業</dt><dd><span class="work-status work-status-${workStatusClass[c.work_status] || 'notstarted'}">${c.work_status || '未着手'}</span></dd>
+            <dt>優先度</dt><dd>${priorityBadge(c.priority)}</dd>
+            <dt>場所</dt><dd>${c.location_address || '—'}</dd>
+            <dt>期限</dt><dd>${c.deadline || '—'}</dd>
+          </dl>
+          <div class="case-tile-actions" onclick="event.stopPropagation()">
+            <button class="action-btn ${c.photo_url ? 'action-btn-active' : 'action-btn-inactive'}" ${c.photo_url ? `onclick="openPhotoViewer('${c.photo_url}', '写真 — ${c.name}')"` : ''} title="${c.photo_url ? '写真を見る' : '写真なし'}">📷</button>
+            <button class="action-btn" onclick="openMapViewer(${c.id})" title="地図を見る">📍</button>
+            <button class="action-btn ${c.attachment_url ? 'action-btn-active' : 'action-btn-inactive'}" ${c.attachment_url ? `onclick="openAttachmentViewer('${c.attachment_url}', '資料 — ${c.name}')"` : ''} title="${c.attachment_url ? '資料を見る' : '資料なし'}">📎</button>
+            <button class="action-btn" onclick="openTimeline(${c.id})" title="実施履歴">🕒</button>
+            <button class="action-btn" onclick="deleteCase(${c.id})" title="${c.is_deleted ? '完全削除' : '削除フラグ'}">🗑</button>
+          </div>
+        </article>`).join('');
     }
 
     // Pagination
@@ -1783,6 +1924,8 @@
   document.getElementById('exportBtn').onclick      = exportCSV;
   document.getElementById('showCompletedBtn').onclick = () => setWorkViewMode('completed');
   document.getElementById('showInProgressBtn').onclick = () => setWorkViewMode('active');
+  document.getElementById('tableLayoutBtn').onclick  = () => setListLayoutMode('table');
+  document.getElementById('tileLayoutBtn').onclick   = () => setListLayoutMode('tile');
   bindPhotoField('f');
   bindPhotoField('t');
   setTimelineSaveLoading(false);
