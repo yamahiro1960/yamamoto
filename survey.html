@@ -79,50 +79,9 @@
       gap: 8px;
       flex-wrap: wrap;
     }
-    .auth-card {
-      margin-bottom: 16px;
-      padding: 16px;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: #fff;
-      box-shadow: 0 10px 24px rgba(30, 41, 59, 0.08);
-      display: grid;
-      gap: 14px;
-    }
-    .auth-card-head {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    .auth-card-title {
-      font-size: 16px;
-      font-weight: 800;
-    }
-    .auth-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr auto;
-      gap: 10px;
-      align-items: end;
-    }
-    .auth-grid .field {
-      margin: 0;
-    }
     .auth-status {
       font-size: 13px;
       color: var(--sub);
-    }
-    .session-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      font-weight: 700;
-      padding: 5px 10px;
-      border-radius: 999px;
-      background: #dcfce7;
-      color: #166534;
     }
     .card {
       background: #fff;
@@ -431,39 +390,17 @@
 
     @media (max-width: 760px) {
       .row { grid-template-columns: 1fr; }
-      .auth-grid { grid-template-columns: 1fr; }
       .title { font-size: 23px; }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="auth-card" id="authCard">
-      <div class="auth-card-head">
-        <div>
-          <div class="auth-card-title">管理者ログイン</div>
-          <div class="auth-status" id="authStatus">未ログインです。Supabase Auth の管理者アカウントでログインしてください。</div>
-        </div>
-        <button class="btn btn-ghost" id="logoutBtn" type="button" style="display:none">ログアウト</button>
-      </div>
-      <div class="auth-grid" id="loginGrid">
-        <div class="field">
-          <label for="loginEmail">メールアドレス</label>
-          <input id="loginEmail" type="text" placeholder="admin@example.com" />
-        </div>
-        <div class="field">
-          <label for="loginPassword">パスワード</label>
-          <input id="loginPassword" type="password" placeholder="パスワード" />
-        </div>
-        <button class="btn btn-primary" id="loginBtn" type="button">ログイン</button>
-      </div>
-      <div class="session-chip" id="sessionChip" style="display:none">ログイン済み</div>
-    </div>
-
     <div class="head">
       <div>
         <h1 class="title">アンケート管理</h1>
         <p class="sub">単一回答ページ方式: 公開URLにトークンを付けて複数アンケートを運用します。</p>
+        <p class="auth-status" id="authStatus">案件管理画面でログインした状態で利用してください。</p>
       </div>
       <div class="top-actions">
         <a class="btn btn-ghost" href="index.html">案件管理へ戻る</a>
@@ -583,10 +520,6 @@
     const responseModalOverlay = document.getElementById('responseModalOverlay');
     const questionsWrap = document.getElementById('questionsWrap');
     const authStatus = document.getElementById('authStatus');
-    const authCard = document.getElementById('authCard');
-    const loginGrid = document.getElementById('loginGrid');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const sessionChip = document.getElementById('sessionChip');
     const responseModalTitle = document.getElementById('responseModalTitle');
     const responseModalSub = document.getElementById('responseModalSub');
     const responseList = document.getElementById('responseList');
@@ -612,10 +545,7 @@
     }
 
     function setAuthUi(isAuthed, message = '') {
-      authStatus.textContent = message || (isAuthed ? 'ログイン済みです。' : '未ログインです。Supabase Auth の管理者アカウントでログインしてください。');
-      loginGrid.style.display = isAuthed ? 'none' : 'grid';
-      logoutBtn.style.display = isAuthed ? 'inline-flex' : 'none';
-      sessionChip.style.display = isAuthed ? 'inline-flex' : 'none';
+      authStatus.textContent = message || (isAuthed ? '案件管理画面のログインセッションを使用中です。' : '案件管理画面でログインした状態で利用してください。');
       document.getElementById('newFormBtn').disabled = !isAuthed;
       document.getElementById('reloadBtn').disabled = !isAuthed;
       searchInput.disabled = !isAuthed;
@@ -964,29 +894,6 @@
       await loadForms();
     }
 
-    async function login() {
-      const email = document.getElementById('loginEmail').value.trim();
-      const password = document.getElementById('loginPassword').value;
-      if (!email || !password) {
-        showToast('メールアドレスとパスワードを入力してください。');
-        return;
-      }
-      const { data, error } = await db.auth.signInWithPassword({ email, password });
-      if (error) {
-        showToast('ログインに失敗: ' + error.message);
-        return;
-      }
-      currentSession = data.session || null;
-      setAuthUi(!!currentSession, currentSession?.user?.email ? `ログイン中: ${currentSession.user.email}` : 'ログイン済みです。');
-      await loadForms();
-    }
-
-    async function logout() {
-      await db.auth.signOut();
-      currentSession = null;
-      setAuthUi(false);
-    }
-
     window.openEdit = function (id) {
       const form = forms.find(x => x.id === id);
       if (!form) return;
@@ -1046,13 +953,10 @@
     responseModalOverlay.addEventListener('click', (event) => {
       if (event.target === responseModalOverlay) responseModalOverlay.classList.remove('open');
     });
-    document.getElementById('loginBtn').addEventListener('click', login);
-    document.getElementById('logoutBtn').addEventListener('click', logout);
-
     db.auth.getSession().then(({ data }) => {
       currentSession = data.session || null;
       authReady = true;
-      setAuthUi(!!currentSession, currentSession?.user?.email ? `ログイン中: ${currentSession.user.email}` : '未ログインです。Supabase Auth の管理者アカウントでログインしてください。');
+      setAuthUi(!!currentSession, currentSession?.user?.email ? `ログイン中: ${currentSession.user.email}` : '案件管理画面でログインした状態で利用してください。');
       if (currentSession) {
         loadForms();
       }
@@ -1061,7 +965,7 @@
     db.auth.onAuthStateChange((_event, session) => {
       currentSession = session;
       if (!authReady) return;
-      setAuthUi(!!session, session?.user?.email ? `ログイン中: ${session.user.email}` : '未ログインです。Supabase Auth の管理者アカウントでログインしてください。');
+      setAuthUi(!!session, session?.user?.email ? `ログイン中: ${session.user.email}` : '案件管理画面でログインした状態で利用してください。');
       if (session) {
         loadForms();
       }

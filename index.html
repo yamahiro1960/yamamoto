@@ -81,6 +81,9 @@
       padding: 6px 10px;
       white-space: nowrap;
     }
+    .auth-panel .hidden-auth {
+      display: none !important;
+    }
     .btn {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 8px 16px;
@@ -687,6 +690,13 @@
   <header class="header">
     <div class="header-title">案件管理ダッシュボード</div>
     <div class="header-actions">
+      <div class="auth-panel">
+        <input id="loginEmail" type="text" placeholder="管理者メール" />
+        <input id="loginPassword" type="password" placeholder="パスワード" />
+        <button class="btn btn-ghost" id="loginBtn">ログイン</button>
+        <button class="btn btn-ghost hidden-auth" id="logoutBtn">ログアウト</button>
+        <span class="auth-status" id="authStatus">未ログイン</span>
+      </div>
       <button class="btn btn-ghost" id="openSurveyBtn">📝 アンケート調査</button>
       <button class="btn btn-ghost" id="exportBtn">⬇ エクスポート</button>
       <button class="btn btn-primary" id="openModalBtn">＋ 新規案件登録</button>
@@ -1039,6 +1049,7 @@
   let currentPage = 1;
   let workViewMode = 'active';
   let listLayoutMode = 'table';
+  let currentSession = null;
   const pendingPhotoUploads = { f: null, t: null };
 
   // ===== Helpers =====
@@ -1342,7 +1353,50 @@
   }
 
   function requireAuth() {
+    if (!currentSession?.user) {
+      showToast('⚠️', '先にシステムへログインしてください');
+      return false;
+    }
     return true;
+  }
+
+  function updateAuthUi() {
+    const isAuthed = !!currentSession?.user;
+    document.getElementById('loginEmail').classList.toggle('hidden-auth', isAuthed);
+    document.getElementById('loginPassword').classList.toggle('hidden-auth', isAuthed);
+    document.getElementById('loginBtn').classList.toggle('hidden-auth', isAuthed);
+    document.getElementById('logoutBtn').classList.toggle('hidden-auth', !isAuthed);
+    document.getElementById('authStatus').textContent = isAuthed
+      ? `ログイン中: ${currentSession.user.email}`
+      : '未ログイン';
+  }
+
+  async function loginSystem() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    if (!email || !password) {
+      showToast('⚠️', 'メールアドレスとパスワードを入力してください');
+      return;
+    }
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+    if (error) {
+      showToast('❌', 'ログインに失敗しました: ' + error.message);
+      return;
+    }
+    currentSession = data.session || null;
+    updateAuthUi();
+    showToast('✅', 'ログインしました');
+  }
+
+  async function logoutSystem() {
+    const { error } = await db.auth.signOut();
+    if (error) {
+      showToast('❌', 'ログアウトに失敗しました: ' + error.message);
+      return;
+    }
+    currentSession = null;
+    updateAuthUi();
+    showToast('✅', 'ログアウトしました');
   }
 
   // ===== Supabase CRUD =====
@@ -1914,6 +1968,8 @@
 
   // ===== Event listeners =====
   document.getElementById('openModalBtn').onclick   = () => openModal(true);
+  document.getElementById('loginBtn').onclick       = loginSystem;
+  document.getElementById('logoutBtn').onclick      = logoutSystem;
   document.getElementById('closeModalBtn').onclick  = closeModal;
   document.getElementById('cancelModalBtn').onclick = closeModal;
   document.getElementById('openTimelineBtn').onclick = () => openTimeline(timelineCaseId);
@@ -1947,6 +2003,14 @@
   });
 
   // ===== Init =====
+  db.auth.getSession().then(({ data }) => {
+    currentSession = data.session || null;
+    updateAuthUi();
+  });
+  db.auth.onAuthStateChange((_event, session) => {
+    currentSession = session;
+    updateAuthUi();
+  });
   loadCases();
 </script>
 </body>
