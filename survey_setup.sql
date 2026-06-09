@@ -27,6 +27,22 @@ create index if not exists idx_survey_forms_public_token on public.survey_forms(
 create index if not exists idx_survey_forms_published on public.survey_forms(is_published);
 create index if not exists idx_survey_responses_form_id on public.survey_responses(form_id);
 
+create or replace function public.set_survey_forms_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_survey_forms_updated_at on public.survey_forms;
+create trigger trg_survey_forms_updated_at
+before update on public.survey_forms
+for each row
+execute function public.set_survey_forms_updated_at();
+
 alter table public.survey_forms enable row level security;
 alter table public.survey_responses enable row level security;
 

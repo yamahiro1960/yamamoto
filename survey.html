@@ -79,6 +79,51 @@
       gap: 8px;
       flex-wrap: wrap;
     }
+    .auth-card {
+      margin-bottom: 16px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(30, 41, 59, 0.08);
+      display: grid;
+      gap: 14px;
+    }
+    .auth-card-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .auth-card-title {
+      font-size: 16px;
+      font-weight: 800;
+    }
+    .auth-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+    .auth-grid .field {
+      margin: 0;
+    }
+    .auth-status {
+      font-size: 13px;
+      color: var(--sub);
+    }
+    .session-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: #dcfce7;
+      color: #166534;
+    }
     .card {
       background: #fff;
       border: 1px solid var(--border);
@@ -149,6 +194,28 @@
       display: flex;
       gap: 6px;
       flex-wrap: wrap;
+    }
+    .public-url {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--sub);
+      word-break: break-all;
+    }
+    .public-url code {
+      font-family: Consolas, monospace;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1px 6px;
+      color: var(--text);
+    }
+    .public-url .mini {
+      padding: 4px 8px;
+      font-size: 11px;
     }
     .mini {
       border: 1px solid var(--border);
@@ -248,6 +315,50 @@
       display: grid;
       gap: 14px;
     }
+    .response-list {
+      display: grid;
+      gap: 12px;
+    }
+    .response-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #f8fafc;
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+    .response-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .response-meta {
+      font-size: 12px;
+      color: var(--sub);
+    }
+    .response-items {
+      display: grid;
+      gap: 8px;
+    }
+    .response-item {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+    .response-item-label {
+      font-size: 12px;
+      color: var(--sub);
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+    .response-item-value {
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
     .field {
       display: flex;
       flex-direction: column;
@@ -290,6 +401,9 @@
       display: grid;
       gap: 8px;
     }
+    .question-desc {
+      min-height: 72px;
+    }
     .question-head {
       display: flex;
       align-items: center;
@@ -317,12 +431,35 @@
 
     @media (max-width: 760px) {
       .row { grid-template-columns: 1fr; }
+      .auth-grid { grid-template-columns: 1fr; }
       .title { font-size: 23px; }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
+    <div class="auth-card" id="authCard">
+      <div class="auth-card-head">
+        <div>
+          <div class="auth-card-title">管理者ログイン</div>
+          <div class="auth-status" id="authStatus">未ログインです。Supabase Auth の管理者アカウントでログインしてください。</div>
+        </div>
+        <button class="btn btn-ghost" id="logoutBtn" type="button" style="display:none">ログアウト</button>
+      </div>
+      <div class="auth-grid" id="loginGrid">
+        <div class="field">
+          <label for="loginEmail">メールアドレス</label>
+          <input id="loginEmail" type="text" placeholder="admin@example.com" />
+        </div>
+        <div class="field">
+          <label for="loginPassword">パスワード</label>
+          <input id="loginPassword" type="password" placeholder="パスワード" />
+        </div>
+        <button class="btn btn-primary" id="loginBtn" type="button">ログイン</button>
+      </div>
+      <div class="session-chip" id="sessionChip" style="display:none">ログイン済み</div>
+    </div>
+
     <div class="head">
       <div>
         <h1 class="title">アンケート管理</h1>
@@ -404,6 +541,22 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="responseModalOverlay">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title" id="responseModalTitle">回答一覧</div>
+        <button class="close-btn" id="closeResponseModalBtn" type="button">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="sub" id="responseModalSub"></div>
+        <div class="response-list" id="responseList"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" id="closeResponseModalBtn2" type="button">閉じる</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -419,13 +572,24 @@
     let forms = [];
     let responseCounts = {};
     let editingId = null;
+    let currentSession = null;
+    let authReady = false;
 
     const formsBody = document.getElementById('formsBody');
     const emptyBox = document.getElementById('emptyBox');
     const tableWrap = document.getElementById('tableWrap');
     const searchInput = document.getElementById('searchInput');
     const formModalOverlay = document.getElementById('formModalOverlay');
+    const responseModalOverlay = document.getElementById('responseModalOverlay');
     const questionsWrap = document.getElementById('questionsWrap');
+    const authStatus = document.getElementById('authStatus');
+    const authCard = document.getElementById('authCard');
+    const loginGrid = document.getElementById('loginGrid');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const sessionChip = document.getElementById('sessionChip');
+    const responseModalTitle = document.getElementById('responseModalTitle');
+    const responseModalSub = document.getElementById('responseModalSub');
+    const responseList = document.getElementById('responseList');
 
     function uid() {
       return Math.random().toString(36).slice(2, 10);
@@ -445,6 +609,32 @@
       t.textContent = msg;
       t.classList.add('show');
       setTimeout(() => t.classList.remove('show'), 2600);
+    }
+
+    function setAuthUi(isAuthed, message = '') {
+      authStatus.textContent = message || (isAuthed ? 'ログイン済みです。' : '未ログインです。Supabase Auth の管理者アカウントでログインしてください。');
+      loginGrid.style.display = isAuthed ? 'none' : 'grid';
+      logoutBtn.style.display = isAuthed ? 'inline-flex' : 'none';
+      sessionChip.style.display = isAuthed ? 'inline-flex' : 'none';
+      document.getElementById('newFormBtn').disabled = !isAuthed;
+      document.getElementById('reloadBtn').disabled = !isAuthed;
+      searchInput.disabled = !isAuthed;
+      if (!isAuthed) {
+        forms = [];
+        responseCounts = {};
+        formsBody.innerHTML = '';
+        emptyBox.textContent = 'ログインするとアンケート一覧を表示できます。';
+        emptyBox.style.display = 'block';
+        tableWrap.style.display = 'none';
+      }
+    }
+
+    function requireAuth() {
+      if (!currentSession?.user) {
+        showToast('先にログインしてください。');
+        return false;
+      }
+      return true;
     }
 
     function fmtDateTime(value) {
@@ -496,6 +686,11 @@
             <td>
               <strong>${form.title}</strong><br>
               <span style="font-size:12px;color:var(--sub)">${form.intro_text || ''}</span>
+              <div class="public-url">
+                <span>公開URL:</span>
+                <code>${publicUrl}</code>
+                <button class="mini" type="button" onclick="copyPublicUrl('${publicUrl}')">コピー</button>
+              </div>
             </td>
             <td><span class="badge ${published ? 'badge-open' : 'badge-stop'}">${published ? '公開' : '停止'}</span></td>
             <td>${questions.length}</td>
@@ -505,17 +700,40 @@
               <div class="actions">
                 <button class="mini" onclick="openEdit(${form.id})">編集</button>
                 <a class="mini" href="${publicUrl}" target="_blank" rel="noopener noreferrer">公開ページ</a>
-                <button class="mini" onclick="copyPublicUrl('${publicUrl}')">URLコピー</button>
+                <button class="mini" onclick="openResponses(${form.id})">回答一覧</button>
               </div>
             </td>
           </tr>`;
       }).join('');
     }
 
+    function renderAnswerValue(questionMap, questionId, value) {
+      const question = questionMap.get(questionId) || { label: questionId, description: '' };
+      const text = value == null || value === '' ? '—' : String(value);
+      return `
+        <div class="response-item">
+          <div class="response-item-label">${question.label}</div>
+          ${question.description ? `<div class="response-item-description" style="font-size:12px;color:var(--sub);margin-bottom:4px;white-space:pre-wrap;">${question.description}</div>` : ''}
+          <div class="response-item-value">${text}</div>
+        </div>`;
+    }
+
+    function buildQuestionMap(questions) {
+      const map = new Map();
+      questions.forEach(q => {
+        map.set(q.id, {
+          label: q.label || q.id,
+          description: q.description || '',
+        });
+      });
+      return map;
+    }
+
     function questionTemplate(question = {}) {
       const qid = question.id || uid();
       const type = question.type || 'text';
       const label = question.label || '';
+      const description = question.description || '';
       const required = question.required ? 'checked' : '';
       const options = (question.options || []).join('\n');
       return `
@@ -527,6 +745,10 @@
           <div class="field">
             <label>設問文</label>
             <input type="text" class="q-label" value="${label.replace(/"/g, '&quot;')}" placeholder="例: 担当者の対応は丁寧でしたか？" />
+          </div>
+          <div class="field">
+            <label>説明文</label>
+            <textarea class="q-description question-desc" placeholder="回答者に表示する説明文を入力してください">${description}</textarea>
           </div>
           <div class="row">
             <div class="field">
@@ -569,6 +791,7 @@
       const questions = boxes.map(box => {
         const id = box.dataset.qid;
         const label = box.querySelector('.q-label').value.trim();
+        const description = box.querySelector('.q-description').value.trim();
         const type = box.querySelector('.q-type').value;
         const required = box.querySelector('.q-required').value === 'true';
         const optionsRaw = box.querySelector('.q-options')?.value || '';
@@ -576,7 +799,7 @@
           .split('\n')
           .map(v => v.trim())
           .filter(Boolean);
-        return { id, label, type, required, options };
+        return { id, label, description, type, required, options };
       });
 
       for (const q of questions) {
@@ -609,6 +832,7 @@
     }
 
     async function loadForms() {
+      if (!requireAuth()) return;
       const { data, error } = await db
         .from('survey_forms')
         .select('id,title,intro_text,is_published,public_token,questions_json,created_at')
@@ -637,7 +861,53 @@
       });
     }
 
+    async function openResponses(formId) {
+      if (!requireAuth()) return;
+      const form = forms.find(x => x.id === formId);
+      if (!form) return;
+
+      const questions = parseQuestions(form.questions_json);
+      const questionMap = buildQuestionMap(questions);
+      responseModalTitle.textContent = `回答一覧: ${form.title || 'アンケート'}`;
+      responseModalSub.textContent = `公開URL: ${getPublicUrl(form.public_token)}`;
+      responseList.innerHTML = '<div class="empty" style="margin:0">読み込み中...</div>';
+      responseModalOverlay.classList.add('open');
+
+      const { data, error } = await db
+        .from('survey_responses')
+        .select('id,respondent_name,answers_json,submitted_at,client_meta')
+        .eq('form_id', formId)
+        .order('submitted_at', { ascending: false });
+
+      if (error) {
+        responseList.innerHTML = `<div class="empty" style="margin:0">回答取得に失敗しました: ${error.message}</div>`;
+        return;
+      }
+
+      const list = data || [];
+      if (!list.length) {
+        responseList.innerHTML = '<div class="empty" style="margin:0">まだ回答はありません。</div>';
+        return;
+      }
+
+      responseList.innerHTML = list.map((item, index) => {
+        const answers = item.answers_json || {};
+        const itemsHtml = Object.entries(answers).map(([questionId, value]) => renderAnswerValue(questionMap, questionId, value)).join('');
+        return `
+          <div class="response-card">
+            <div class="response-head">
+              <strong>回答 ${list.length - index}</strong>
+              <span class="response-meta">${fmtDateTime(item.submitted_at)} / ${item.respondent_name || '匿名'}</span>
+            </div>
+            <div class="response-items">
+              ${itemsHtml || '<div class="empty" style="margin:0">回答内容がありません。</div>'}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
     async function saveForm() {
+      if (!requireAuth()) return;
       const title = document.getElementById('fTitle').value.trim();
       const intro = document.getElementById('fIntro').value.trim();
       const isPublished = document.getElementById('fPublished').value === 'true';
@@ -674,6 +944,7 @@
         is_published: isPublished,
         public_token: token,
         questions_json: picked.questions,
+        updated_at: new Date().toISOString(),
       };
 
       let error;
@@ -691,6 +962,29 @@
       showToast('アンケートを保存しました。');
       closeFormModal();
       await loadForms();
+    }
+
+    async function login() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      if (!email || !password) {
+        showToast('メールアドレスとパスワードを入力してください。');
+        return;
+      }
+      const { data, error } = await db.auth.signInWithPassword({ email, password });
+      if (error) {
+        showToast('ログインに失敗: ' + error.message);
+        return;
+      }
+      currentSession = data.session || null;
+      setAuthUi(!!currentSession, currentSession?.user?.email ? `ログイン中: ${currentSession.user.email}` : 'ログイン済みです。');
+      await loadForms();
+    }
+
+    async function logout() {
+      await db.auth.signOut();
+      currentSession = null;
+      setAuthUi(false);
     }
 
     window.openEdit = function (id) {
@@ -732,6 +1026,7 @@
     };
 
     document.getElementById('newFormBtn').addEventListener('click', () => {
+      if (!requireAuth()) return;
       resetFormModal();
       openFormModal(true);
     });
@@ -746,8 +1041,33 @@
     formModalOverlay.addEventListener('click', (event) => {
       if (event.target === formModalOverlay) closeFormModal();
     });
+    document.getElementById('closeResponseModalBtn').addEventListener('click', () => responseModalOverlay.classList.remove('open'));
+    document.getElementById('closeResponseModalBtn2').addEventListener('click', () => responseModalOverlay.classList.remove('open'));
+    responseModalOverlay.addEventListener('click', (event) => {
+      if (event.target === responseModalOverlay) responseModalOverlay.classList.remove('open');
+    });
+    document.getElementById('loginBtn').addEventListener('click', login);
+    document.getElementById('logoutBtn').addEventListener('click', logout);
 
-    loadForms();
+    db.auth.getSession().then(({ data }) => {
+      currentSession = data.session || null;
+      authReady = true;
+      setAuthUi(!!currentSession, currentSession?.user?.email ? `ログイン中: ${currentSession.user.email}` : '未ログインです。Supabase Auth の管理者アカウントでログインしてください。');
+      if (currentSession) {
+        loadForms();
+      }
+    });
+
+    db.auth.onAuthStateChange((_event, session) => {
+      currentSession = session;
+      if (!authReady) return;
+      setAuthUi(!!session, session?.user?.email ? `ログイン中: ${session.user.email}` : '未ログインです。Supabase Auth の管理者アカウントでログインしてください。');
+      if (session) {
+        loadForms();
+      }
+    });
+
+    setAuthUi(false);
   </script>
 </body>
 </html>
