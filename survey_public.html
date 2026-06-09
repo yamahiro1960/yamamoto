@@ -363,7 +363,7 @@
 
       const { data, error } = await db
         .from('survey_forms')
-        .select('id,title,intro_text,is_published,questions_json')
+        .select('id,title,intro_text,is_published,is_deleted,questions_json')
         .eq('public_token', token)
         .maybeSingle();
 
@@ -373,7 +373,7 @@
         return;
       }
 
-      if (!data.is_published) {
+      if (!data.is_published || data.is_deleted) {
         titleEl.textContent = data.title || 'アンケート';
         introEl.textContent = 'このアンケートは現在公開されていません。';
         return;
@@ -438,6 +438,10 @@
       submitBtn.textContent = '送信する';
 
       if (error) {
+        if ((error.message || '').toLowerCase().includes('permission denied')) {
+          showStatus('送信権限エラーです。管理者に「survey_setup.sql の再実行」を依頼してください。', false);
+          return;
+        }
         showStatus('送信に失敗しました: ' + error.message, false);
         return;
       }

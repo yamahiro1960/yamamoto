@@ -35,7 +35,7 @@ grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on table public.survey_forms to authenticated;
 grant select on table public.survey_forms to anon;
 grant select on table public.survey_responses to authenticated;
-grant insert on table public.survey_responses to anon;
+grant insert on table public.survey_responses to anon, authenticated;
 grant usage, select on sequence public.survey_forms_id_seq to authenticated;
 grant usage, select on sequence public.survey_responses_id_seq to anon, authenticated;
 
@@ -93,7 +93,7 @@ drop policy if exists survey_responses_public_insert on public.survey_responses;
 create policy survey_responses_public_insert
 on public.survey_responses
 for insert
-to anon
+to anon, authenticated
 with check (
   exists (
     select 1
