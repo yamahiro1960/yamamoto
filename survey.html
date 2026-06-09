@@ -149,6 +149,10 @@
     }
     .badge-open { background: #dcfce7; color: #166534; }
     .badge-stop { background: #fee2e2; color: #991b1b; }
+    .badge-archived { background: #f1f5f9; color: #475569; }
+    tr.row-deleted {
+      background: #f8fafc;
+    }
     .actions {
       display: flex;
       gap: 6px;
@@ -212,6 +216,22 @@
       text-decoration: none;
     }
     .mini:hover { background: #f8fafc; }
+    .mini-danger {
+      border-color: #fecaca;
+      background: #fff1f2;
+      color: #9f1239;
+    }
+    .mini-danger:hover {
+      background: #ffe4e6;
+    }
+    .mini-warn {
+      border-color: #fde68a;
+      background: #fffbeb;
+      color: #92400e;
+    }
+    .mini-warn:hover {
+      background: #fef3c7;
+    }
     .empty {
       margin: 14px;
       border: 1px dashed var(--border);
@@ -647,12 +667,13 @@
 
       formsBody.innerHTML = list.map(form => {
         const published = !!form.is_published;
+        const isDeleted = !!form.is_deleted;
         const count = responseCounts[form.id] || 0;
         const questions = parseQuestions(form.questions_json);
         const publicUrl = getPublicUrl(form.public_token);
         const qrUrl = getQrImageUrl(publicUrl);
         return `
-          <tr>
+          <tr class="${isDeleted ? 'row-deleted' : ''}">
             <td>${form.id}</td>
             <td>
               <strong>${form.title}</strong><br>
@@ -666,7 +687,11 @@
                 </a>
               </div>
             </td>
-            <td><span class="badge ${published ? 'badge-open' : 'badge-stop'}">${published ? '公開' : '停止'}</span></td>
+            <td>
+              <span class="badge ${isDeleted ? 'badge-archived' : (published ? 'badge-open' : 'badge-stop')}">
+                ${isDeleted ? '論理削除' : (published ? '公開' : '停止')}
+              </span>
+            </td>
             <td>${questions.length}</td>
             <td>${count}</td>
             <td>${fmtDateTime(form.created_at)}</td>
@@ -675,6 +700,10 @@
                 <button class="mini" onclick="openEdit(${form.id})">編集</button>
                 <a class="mini" href="${publicUrl}" target="_blank" rel="noopener noreferrer">公開ページ</a>
                 <button class="mini" onclick="openResponses(${form.id})">回答一覧</button>
+                ${isDeleted
+                  ? `<button class="mini" onclick="restoreForm(${form.id})">復元</button>`
+                  : `<button class="mini mini-warn" onclick="softDeleteForm(${form.id})">論理削除</button>`}
+                <button class="mini mini-danger" onclick="hardDeleteForm(${form.id})">完全削除</button>
               </div>
             </td>
           </tr>`;
@@ -810,7 +839,7 @@
       if (!(await ensureValidSession())) return;
       const { data, error } = await db
         .from('survey_forms')
-        .select('id,title,intro_text,is_published,public_token,questions_json,created_at')
+        .select('id,title,intro_text,is_published,is_deleted,deleted_at,public_token,questions_json,created_at')
         .order('id', { ascending: false });
       if (error) {
         showToast('アンケート読込に失敗: ' + error.message);
@@ -983,6 +1012,91 @@
       } catch (_) {
         showToast('URLコピーに失敗しました。');
       }
+    };
+
+    window.deleteForm = async function (id) {
+    window.softDeleteForm = async function (id) {
+      if (!requireAuth()) return;
+      if (!(await ensureValidSession())) return;
+
+      const form = forms.find(x => x.id === id);
+      if (!form) {
+        showToast('削除対象のアンケートが見つかりません。');
+        return;
+      }
+
+      const ok = confirm(`「${form.title || 'アンケート'}」を論理削除します。\n公開ページからは見えなくなり、一覧では「論理削除」として残ります。実行しますか？`);
+      if (!ok) return;
+
+      const { error } = await db
+        .from('survey_forms')
+        .update({ is_deleted: true, deleted_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) {
+        if ((error.message || '').toLowerCase().includes('permission denied')) {
+          currentSession = null;
+          setAuthUi(false, '削除権限がありません。案件管理画面で再ログインしてください。');
+          showToast('ログイン状態を確認できません。案件管理画面で再ログインしてください。');
+          return;
+        }
+        showToast('削除に失敗: ' + error.message);
+        return;
+      }
+
+      showToast('アンケートを論理削除しました。');
+      await loadForms();
+    };
+
+    window.restoreForm = async function (id) {
+      if (!requireAuth()) return;
+      if (!(await ensureValidSession())) return;
+
+      const form = forms.find(x => x.id === id);
+      if (!form) {
+        showToast('復元対象のアンケートが見つかりません。');
+        return;
+      }
+
+      const { error } = await db
+        .from('survey_forms')
+        .update({ is_deleted: false, deleted_at: null })
+        .eq('id', id);
+      if (error) {
+        showToast('復元に失敗: ' + error.message);
+        return;
+      }
+
+      showToast('アンケートを復元しました。');
+      await loadForms();
+    };
+
+    window.hardDeleteForm = async function (id) {
+      if (!requireAuth()) return;
+      if (!(await ensureValidSession())) return;
+
+      const form = forms.find(x => x.id === id);
+      if (!form) {
+        showToast('削除対象のアンケートが見つかりません。');
+        return;
+      }
+
+      const ok = confirm(`「${form.title || 'アンケート'}」を完全削除します。\n関連する回答データもDBから削除されます。実行しますか？`);
+      if (!ok) return;
+
+      const { error } = await db.from('survey_forms').delete().eq('id', id);
+      if (error) {
+        if ((error.message || '').toLowerCase().includes('permission denied')) {
+          currentSession = null;
+          setAuthUi(false, '削除権限がありません。案件管理画面で再ログインしてください。');
+          showToast('ログイン状態を確認できません。案件管理画面で再ログインしてください。');
+          return;
+        }
+        showToast('削除に失敗: ' + error.message);
+        return;
+      }
+
+      showToast('アンケートを完全削除しました。');
+      await loadForms();
     };
 
     document.getElementById('newFormBtn').addEventListener('click', () => {

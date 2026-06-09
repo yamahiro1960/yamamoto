@@ -8,11 +8,16 @@ create table if not exists public.survey_forms (
   title text not null,
   intro_text text,
   is_published boolean not null default true,
+  is_deleted boolean not null default false,
+  deleted_at timestamptz,
   public_token text not null unique,
   questions_json jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.survey_forms add column if not exists is_deleted boolean not null default false;
+alter table public.survey_forms add column if not exists deleted_at timestamptz;
 
 create table if not exists public.survey_responses (
   id bigserial primary key,
@@ -33,6 +38,7 @@ grant usage, select on sequence public.survey_responses_id_seq to anon, authenti
 
 create index if not exists idx_survey_forms_public_token on public.survey_forms(public_token);
 create index if not exists idx_survey_forms_published on public.survey_forms(is_published);
+create index if not exists idx_survey_forms_is_deleted on public.survey_forms(is_deleted);
 create index if not exists idx_survey_responses_form_id on public.survey_responses(form_id);
 
 create or replace function public.set_survey_forms_updated_at()
@@ -69,7 +75,7 @@ create policy survey_forms_public_read
 on public.survey_forms
 for select
 to anon
-using (is_published = true);
+using (is_published = true and coalesce(is_deleted, false) = false);
 
 -- Admin can read all responses
 drop policy if exists survey_responses_admin_read on public.survey_responses;
@@ -91,6 +97,7 @@ with check (
     from public.survey_forms f
     where f.id = form_id
       and f.is_published = true
+      and coalesce(f.is_deleted, false) = false
   )
 );
 
