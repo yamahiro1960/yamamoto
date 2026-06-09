@@ -30,6 +30,75 @@
       min-height: 100vh;
     }
 
+    .app-hidden {
+      display: none !important;
+    }
+
+    .auth-gate {
+      min-height: 100vh;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background:
+        radial-gradient(circle at 10% 20%, rgba(37,99,235,.15), transparent 45%),
+        radial-gradient(circle at 90% 10%, rgba(14,116,144,.16), transparent 42%),
+        linear-gradient(135deg, #f8fbff 0%, #eef4ff 48%, #f7fbff 100%);
+    }
+    .auth-gate-card {
+      width: 100%;
+      max-width: 460px;
+      background: #fff;
+      border: 1px solid #dbeafe;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 24px 60px rgba(30, 41, 59, .12);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .auth-gate-title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: .01em;
+    }
+    .auth-gate-sub {
+      color: var(--text-sub);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .auth-gate-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .auth-gate-form input {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      outline: none;
+      background: var(--surface);
+    }
+    .auth-gate-form input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+    }
+    .auth-gate-form .btn {
+      justify-content: center;
+      padding: 11px 14px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .auth-gate-links {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 2px;
+    }
+
     /* ===== Main layout ===== */
     .main-wrapper {
       flex: 1;
@@ -696,8 +765,24 @@
 </head>
 <body>
 
+<section class="auth-gate" id="authGate">
+  <div class="auth-gate-card">
+    <h1 class="auth-gate-title">案件管理システム</h1>
+    <p class="auth-gate-sub">ログイン認証後に、案件管理ダッシュボードを表示します。</p>
+    <div class="auth-gate-form">
+      <input id="gateLoginEmail" type="text" placeholder="管理者メール" />
+      <input id="gateLoginPassword" type="password" placeholder="パスワード" />
+      <button class="btn btn-primary" id="gateLoginBtn" type="button">ログインして開始</button>
+    </div>
+    <div class="auth-gate-links">
+      <button class="auth-link-btn" id="gateForgotPasswordBtn" type="button">パスワードを忘れた場合</button>
+    </div>
+    <span class="auth-status" id="gateAuthStatus">未ログイン</span>
+  </div>
+</section>
+
 <!-- ===== Main ===== -->
-<div class="main-wrapper">
+<div class="main-wrapper app-hidden" id="mainWrapper">
 
   <!-- Header -->
   <header class="header">
@@ -1064,6 +1149,7 @@
   let workViewMode = 'active';
   let listLayoutMode = 'table';
   let currentSession = null;
+  let hasLoadedCases = false;
   const pendingPhotoUploads = { f: null, t: null };
 
   // ===== Helpers =====
@@ -1374,6 +1460,22 @@
     return true;
   }
 
+  function setAuthGateVisible(showGate) {
+    document.getElementById('authGate').classList.toggle('app-hidden', !showGate);
+    document.getElementById('mainWrapper').classList.toggle('app-hidden', showGate);
+  }
+
+  function getLoginCredentials() {
+    const gateEmail = document.getElementById('gateLoginEmail').value.trim();
+    const gatePassword = document.getElementById('gateLoginPassword').value;
+    const headEmail = document.getElementById('loginEmail').value.trim();
+    const headPassword = document.getElementById('loginPassword').value;
+    return {
+      email: gateEmail || headEmail,
+      password: gatePassword || headPassword,
+    };
+  }
+
   function updateAuthUi() {
     const isAuthed = !!currentSession?.user;
     document.getElementById('loginEmail').classList.toggle('hidden-auth', isAuthed);
@@ -1384,11 +1486,22 @@
     document.getElementById('authStatus').textContent = isAuthed
       ? `ログイン中: ${currentSession.user.email}`
       : '未ログイン';
+    document.getElementById('gateAuthStatus').textContent = isAuthed
+      ? `ログイン中: ${currentSession.user.email}`
+      : '未ログイン';
+    setAuthGateVisible(!isAuthed);
+
+    if (isAuthed && !hasLoadedCases) {
+      hasLoadedCases = true;
+      loadCases();
+    }
+    if (!isAuthed) {
+      hasLoadedCases = false;
+    }
   }
 
   async function loginSystem() {
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
+    const { email, password } = getLoginCredentials();
     if (!email || !password) {
       showToast('⚠️', 'メールアドレスとパスワードを入力してください');
       return;
@@ -1415,7 +1528,7 @@
   }
 
   async function sendPasswordRecovery() {
-    const email = document.getElementById('loginEmail').value.trim();
+    const email = document.getElementById('gateLoginEmail').value.trim() || document.getElementById('loginEmail').value.trim();
     if (!email) {
       showToast('⚠️', '再設定メールを送るメールアドレスを入力してください');
       return;
@@ -1998,6 +2111,8 @@
 
   // ===== Event listeners =====
   document.getElementById('openModalBtn').onclick   = () => openModal(true);
+  document.getElementById('gateLoginBtn').onclick   = loginSystem;
+  document.getElementById('gateForgotPasswordBtn').onclick = sendPasswordRecovery;
   document.getElementById('loginBtn').onclick       = loginSystem;
   document.getElementById('logoutBtn').onclick      = logoutSystem;
   document.getElementById('forgotPasswordBtn').onclick = sendPasswordRecovery;
@@ -2013,6 +2128,12 @@
   document.getElementById('showInProgressBtn').onclick = () => setWorkViewMode('active');
   document.getElementById('tableLayoutBtn').onclick  = () => setListLayoutMode('table');
   document.getElementById('tileLayoutBtn').onclick   = () => setListLayoutMode('tile');
+  document.getElementById('gateLoginPassword').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') loginSystem();
+  });
+  document.getElementById('loginPassword').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') loginSystem();
+  });
   bindPhotoField('f');
   bindPhotoField('t');
   setTimelineSaveLoading(false);
@@ -2042,7 +2163,7 @@
     currentSession = session;
     updateAuthUi();
   });
-  loadCases();
+  setAuthGateVisible(true);
 </script>
 </body>
 </html>
