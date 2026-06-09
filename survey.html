@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>アンケート調査</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dk: #1d4ed8;
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --sub: #64748b;
+      --success: #16a34a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      background: linear-gradient(180deg, #eff6ff 0%, var(--bg) 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 32px 16px 56px;
+    }
+    .head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: .02em;
+    }
+    .back {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      text-decoration: none;
+      color: var(--text);
+      background: var(--surface);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: 0 10px 24px rgba(30, 41, 59, 0.08);
+    }
+    .sub {
+      color: var(--sub);
+      margin-bottom: 16px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: 1fr 1fr;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .full { grid-column: 1 / -1; }
+    label {
+      font-size: 13px;
+      font-weight: 700;
+    }
+    input, select, textarea {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      background: #fff;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+    }
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    .actions {
+      margin-top: 18px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: var(--primary-dk);
+    }
+    .btn-ghost {
+      background: #fff;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .done {
+      display: none;
+      margin-top: 14px;
+      border: 1px solid #bbf7d0;
+      background: #f0fdf4;
+      color: #166534;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .done.show { display: block; }
+
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+      .title { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <h1 class="title">アンケート調査</h1>
+      <a class="back" href="index.html">案件管理へ戻る</a>
+    </div>
+
+    <div class="card">
+      <p class="sub">案件対応の品質向上のため、以下のアンケートにご協力ください。</p>
+
+      <form id="surveyForm">
+        <div class="grid">
+          <div class="field">
+            <label for="name">お名前</label>
+            <input id="name" type="text" placeholder="例: 山本 太郎" required />
+          </div>
+          <div class="field">
+            <label for="company">会社名</label>
+            <input id="company" type="text" placeholder="例: 株式会社○○" />
+          </div>
+          <div class="field">
+            <label for="satisfaction">満足度</label>
+            <select id="satisfaction" required>
+              <option value="">選択してください</option>
+              <option>とても満足</option>
+              <option>満足</option>
+              <option>普通</option>
+              <option>不満</option>
+              <option>とても不満</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="speed">対応速度</label>
+            <select id="speed" required>
+              <option value="">選択してください</option>
+              <option>非常に速い</option>
+              <option>速い</option>
+              <option>普通</option>
+              <option>遅い</option>
+              <option>非常に遅い</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label for="comment">ご意見・ご要望</label>
+            <textarea id="comment" placeholder="改善点やご要望をご記入ください"></textarea>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" type="submit">送信する</button>
+          <button class="btn btn-ghost" type="reset">入力をクリア</button>
+        </div>
+      </form>
+
+      <div class="done" id="doneMsg">送信ありがとうございました。内容を受け付けました。</div>
+    </div>
+  </div>
+
+  <script>
+    const surveyForm = document.getElementById('surveyForm');
+    const doneMsg = document.getElementById('doneMsg');
+
+    surveyForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      doneMsg.classList.add('show');
+      surveyForm.reset();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  </script>
+</body>
+</html>

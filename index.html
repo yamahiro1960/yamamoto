@@ -597,8 +597,9 @@
 
   <!-- Header -->
   <header class="header">
-    <div class="header-title">ダッシュボード</div>
+    <div class="header-title">案件管理ダッシュボード</div>
     <div class="header-actions">
+      <button class="btn btn-ghost" id="openSurveyBtn">📝 アンケート調査</button>
       <button class="btn btn-ghost" id="exportBtn">⬇ エクスポート</button>
       <button class="btn btn-primary" id="openModalBtn">＋ 新規案件登録</button>
     </div>
@@ -1778,6 +1779,7 @@
   document.getElementById('closeTimelineBtn').onclick = closeTimeline;
   document.getElementById('addTimelineBtn').onclick = addTimelineEntry;
   document.getElementById('saveBtn').onclick        = saveCase;
+  document.getElementById('openSurveyBtn').onclick  = () => window.open('survey.html', '_blank');
   document.getElementById('exportBtn').onclick      = exportCSV;
   document.getElementById('showCompletedBtn').onclick = () => setWorkViewMode('completed');
   document.getElementById('showInProgressBtn').onclick = () => setWorkViewMode('active');
