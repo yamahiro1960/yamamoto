@@ -84,6 +84,19 @@
     .auth-panel .hidden-auth {
       display: none !important;
     }
+    .auth-link-btn {
+      background: transparent;
+      border: none;
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0 2px;
+    }
+    .auth-link-btn:hover {
+      color: var(--primary-dk);
+      text-decoration: underline;
+    }
     .btn {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 8px 16px;
@@ -695,6 +708,7 @@
         <input id="loginPassword" type="password" placeholder="パスワード" />
         <button class="btn btn-ghost" id="loginBtn">ログイン</button>
         <button class="btn btn-ghost hidden-auth" id="logoutBtn">ログアウト</button>
+        <button class="auth-link-btn" id="forgotPasswordBtn" type="button">パスワードを忘れた場合</button>
         <span class="auth-status" id="authStatus">未ログイン</span>
       </div>
       <button class="btn btn-ghost" id="openSurveyBtn">📝 アンケート調査</button>
@@ -1366,6 +1380,7 @@
     document.getElementById('loginPassword').classList.toggle('hidden-auth', isAuthed);
     document.getElementById('loginBtn').classList.toggle('hidden-auth', isAuthed);
     document.getElementById('logoutBtn').classList.toggle('hidden-auth', !isAuthed);
+    document.getElementById('forgotPasswordBtn').classList.toggle('hidden-auth', isAuthed);
     document.getElementById('authStatus').textContent = isAuthed
       ? `ログイン中: ${currentSession.user.email}`
       : '未ログイン';
@@ -1397,6 +1412,21 @@
     currentSession = null;
     updateAuthUi();
     showToast('✅', 'ログアウトしました');
+  }
+
+  async function sendPasswordRecovery() {
+    const email = document.getElementById('loginEmail').value.trim();
+    if (!email) {
+      showToast('⚠️', '再設定メールを送るメールアドレスを入力してください');
+      return;
+    }
+    const redirectTo = 'https://yamahiro1960.github.io/yamamoto/reset-password.html';
+    const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) {
+      showToast('❌', '再設定メール送信に失敗しました: ' + error.message);
+      return;
+    }
+    showToast('✅', 'パスワード再設定メールを送信しました');
   }
 
   // ===== Supabase CRUD =====
@@ -1970,6 +2000,7 @@
   document.getElementById('openModalBtn').onclick   = () => openModal(true);
   document.getElementById('loginBtn').onclick       = loginSystem;
   document.getElementById('logoutBtn').onclick      = logoutSystem;
+  document.getElementById('forgotPasswordBtn').onclick = sendPasswordRecovery;
   document.getElementById('closeModalBtn').onclick  = closeModal;
   document.getElementById('cancelModalBtn').onclick = closeModal;
   document.getElementById('openTimelineBtn').onclick = () => openTimeline(timelineCaseId);
