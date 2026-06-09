@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>アンケート回答</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dk: #1d4ed8;
+      --surface: #ffffff;
+      --bg: #eff6ff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --sub: #64748b;
+      --danger: #dc2626;
+      --ok: #16a34a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      background: linear-gradient(180deg, var(--bg) 0%, #f8fafc 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 28px 16px 40px;
+    }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      padding: 20px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, .08);
+    }
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.3;
+    }
+    .sub {
+      color: var(--sub);
+      margin-top: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    label {
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .req {
+      color: var(--danger);
+      font-size: 12px;
+      margin-left: 4px;
+    }
+    input[type="text"], textarea, select {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      background: #fff;
+    }
+    input[type="text"]:focus,
+    textarea:focus,
+    select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .14);
+    }
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .radio-item {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 10px;
+      background: #fff;
+    }
+    .actions {
+      margin-top: 18px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--primary-dk); }
+    .msg {
+      margin-top: 14px;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      display: none;
+    }
+    .msg.show { display: block; }
+    .msg.ok {
+      border: 1px solid #bbf7d0;
+      background: #f0fdf4;
+      color: #166534;
+    }
+    .msg.ng {
+      border: 1px solid #fecaca;
+      background: #fef2f2;
+      color: #991b1b;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1 id="formTitle">アンケート</h1>
+      <p class="sub" id="formIntro">読み込み中...</p>
+
+      <form id="surveyAnswerForm" style="display:none;">
+        <div class="field">
+          <label for="respondentName">お名前（任意）</label>
+          <input id="respondentName" type="text" placeholder="例: 山本 太郎" />
+        </div>
+        <div id="dynamicQuestions"></div>
+        <input id="hpField" type="text" style="display:none" autocomplete="off" tabindex="-1" />
+        <div class="actions">
+          <button class="btn btn-primary" id="submitBtn" type="submit">送信する</button>
+        </div>
+      </form>
+
+      <div class="msg" id="statusMsg"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://vspmaejoftjvooohfqbu.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcG1hZWpvZnRqdm9vb2hmcWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODkxODQsImV4cCI6MjA5Mzg2NTE4NH0.vt33TF7OfmNHOMFUP-_Ch6TESVBPW22d-1W3LKkbrHI';
+
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const formEl = document.getElementById('surveyAnswerForm');
+    const titleEl = document.getElementById('formTitle');
+    const introEl = document.getElementById('formIntro');
+    const questionsEl = document.getElementById('dynamicQuestions');
+    const statusEl = document.getElementById('statusMsg');
+    const submitBtn = document.getElementById('submitBtn');
+
+    let currentForm = null;
+
+    function showStatus(message, ok) {
+      statusEl.textContent = message;
+      statusEl.className = 'msg show ' + (ok ? 'ok' : 'ng');
+    }
+
+    function getToken() {
+      const params = new URLSearchParams(location.search);
+      return (params.get('token') || '').trim();
+    }
+
+    function parseQuestions(raw) {
+      if (Array.isArray(raw)) return raw;
+      if (!raw) return [];
+      try {
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function renderQuestions(questions) {
+      questionsEl.innerHTML = '';
+      questions.forEach((q, index) => {
+        const id = q.id || ('q' + index);
+        const required = q.required ? 'required' : '';
+        const requiredText = q.required ? '<span class="req">必須</span>' : '';
+        const label = q.label || ('設問' + (index + 1));
+
+        let html = '';
+        if (q.type === 'textarea') {
+          html = `<textarea data-qid="${id}" ${required}></textarea>`;
+        } else if (q.type === 'select') {
+          const options = (q.options || []).map(opt => `<option value="${opt}">${opt}</option>`).join('');
+          html = `
+            <select data-qid="${id}" ${required}>
+              <option value="">選択してください</option>
+              ${options}
+            </select>
+          `;
+        } else if (q.type === 'radio') {
+          const options = (q.options || []).map((opt, i) => `
+            <label class="radio-item"><input type="radio" name="radio_${id}" value="${opt}" ${required} ${i === 0 ? '' : ''} /> ${opt}</label>
+          `).join('');
+          html = `<div class="radio-group" data-radio="${id}">${options}</div>`;
+        } else {
+          html = `<input type="text" data-qid="${id}" ${required} />`;
+        }
+
+        const block = document.createElement('div');
+        block.className = 'field';
+        block.innerHTML = `<label>${label}${requiredText}</label>${html}`;
+        questionsEl.appendChild(block);
+      });
+    }
+
+    function collectAnswers(questions) {
+      const answers = {};
+      for (const q of questions) {
+        const id = q.id;
+        if (q.type === 'radio') {
+          const selected = document.querySelector(`input[name="radio_${id}"]:checked`);
+          const value = selected ? selected.value : '';
+          if (q.required && !value) return { error: `${q.label} は必須です。` };
+          answers[id] = value;
+          continue;
+        }
+
+        const input = document.querySelector(`[data-qid="${id}"]`);
+        const value = (input?.value || '').trim();
+        if (q.required && !value) return { error: `${q.label} は必須です。` };
+        answers[id] = value;
+      }
+      return { answers };
+    }
+
+    async function loadForm() {
+      const token = getToken();
+      if (!token) {
+        titleEl.textContent = 'アンケートが指定されていません';
+        introEl.textContent = 'URLに token パラメータが必要です。';
+        return;
+      }
+
+      const { data, error } = await db
+        .from('survey_forms')
+        .select('id,title,intro_text,is_published,questions_json')
+        .eq('public_token', token)
+        .maybeSingle();
+
+      if (error || !data) {
+        titleEl.textContent = 'アンケートが見つかりません';
+        introEl.textContent = 'URLをご確認ください。';
+        return;
+      }
+
+      if (!data.is_published) {
+        titleEl.textContent = data.title || 'アンケート';
+        introEl.textContent = 'このアンケートは現在公開されていません。';
+        return;
+      }
+
+      currentForm = data;
+      const questions = parseQuestions(data.questions_json);
+      if (!questions.length) {
+        titleEl.textContent = data.title || 'アンケート';
+        introEl.textContent = '設問が設定されていません。管理者に連絡してください。';
+        return;
+      }
+
+      titleEl.textContent = data.title || 'アンケート';
+      introEl.textContent = data.intro_text || '以下の設問に回答してください。';
+      renderQuestions(questions);
+      formEl.style.display = 'block';
+    }
+
+    formEl.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!currentForm) return;
+
+      const honeypot = document.getElementById('hpField').value.trim();
+      if (honeypot) {
+        showStatus('送信に失敗しました。', false);
+        return;
+      }
+
+      const questions = parseQuestions(currentForm.questions_json);
+      const collected = collectAnswers(questions);
+      if (collected.error) {
+        showStatus(collected.error, false);
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = '送信中...';
+
+      const payload = {
+        form_id: currentForm.id,
+        respondent_name: document.getElementById('respondentName').value.trim(),
+        answers_json: collected.answers,
+        client_meta: {
+          userAgent: navigator.userAgent,
+          language: navigator.language,
+          submittedFrom: location.href,
+        },
+      };
+
+      const { error } = await db.from('survey_responses').insert([payload]);
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = '送信する';
+
+      if (error) {
+        showStatus('送信に失敗しました: ' + error.message, false);
+        return;
+      }
+
+      formEl.reset();
+      showStatus('ご回答ありがとうございました。送信を受け付けました。', true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    loadForm();
+  </script>
+</body>
+</html>

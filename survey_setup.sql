@@ -1,0 +1,87 @@
+-- Survey schema for single public-page model
+-- Run this on Supabase SQL editor
+
+create extension if not exists pgcrypto;
+
+create table if not exists public.survey_forms (
+  id bigserial primary key,
+  title text not null,
+  intro_text text,
+  is_published boolean not null default true,
+  public_token text not null unique,
+  questions_json jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.survey_responses (
+  id bigserial primary key,
+  form_id bigint not null references public.survey_forms(id) on delete cascade,
+  respondent_name text,
+  answers_json jsonb not null default '{}'::jsonb,
+  client_meta jsonb not null default '{}'::jsonb,
+  submitted_at timestamptz not null default now()
+);
+
+create index if not exists idx_survey_forms_public_token on public.survey_forms(public_token);
+create index if not exists idx_survey_forms_published on public.survey_forms(is_published);
+create index if not exists idx_survey_responses_form_id on public.survey_responses(form_id);
+
+alter table public.survey_forms enable row level security;
+alter table public.survey_responses enable row level security;
+
+-- Admin policy (requires Supabase Auth login)
+drop policy if exists survey_forms_admin_all on public.survey_forms;
+create policy survey_forms_admin_all
+on public.survey_forms
+for all
+to authenticated
+using (true)
+with check (true);
+
+-- Public can read only published forms (for answer page)
+drop policy if exists survey_forms_public_read on public.survey_forms;
+create policy survey_forms_public_read
+on public.survey_forms
+for select
+to anon
+using (is_published = true);
+
+-- Admin can read all responses
+drop policy if exists survey_responses_admin_read on public.survey_responses;
+create policy survey_responses_admin_read
+on public.survey_responses
+for select
+to authenticated
+using (true);
+
+-- Public can submit responses only for published forms
+drop policy if exists survey_responses_public_insert on public.survey_responses;
+create policy survey_responses_public_insert
+on public.survey_responses
+for insert
+to anon
+with check (
+  exists (
+    select 1
+    from public.survey_forms f
+    where f.id = form_id
+      and f.is_published = true
+  )
+);
+
+-- Optional hardening: anon cannot update/delete responses
+drop policy if exists survey_responses_no_anon_update on public.survey_responses;
+create policy survey_responses_no_anon_update
+on public.survey_responses
+for update
+to anon
+using (false)
+with check (false);
+
+drop policy if exists survey_responses_no_anon_delete on public.survey_responses;
+create policy survey_responses_no_anon_delete
+on public.survey_responses
+for delete
+to anon
+using (false);

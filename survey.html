@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>アンケート調査</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>アンケート管理</title>
   <style>
     :root {
       --primary: #2563eb;
@@ -13,6 +13,7 @@
       --border: #e2e8f0;
       --text: #1e293b;
       --sub: #64748b;
+      --danger: #dc2626;
       --success: #16a34a;
     }
     * { box-sizing: border-box; }
@@ -24,83 +25,28 @@
       min-height: 100vh;
     }
     .wrap {
-      max-width: 880px;
+      max-width: 1100px;
       margin: 0 auto;
-      padding: 32px 16px 56px;
+      padding: 28px 16px 48px;
     }
     .head {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      margin-bottom: 20px;
       flex-wrap: wrap;
+      margin-bottom: 16px;
     }
     .title {
       font-size: 28px;
       font-weight: 800;
-      letter-spacing: .02em;
-    }
-    .back {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 14px;
-      text-decoration: none;
-      color: var(--text);
-      background: var(--surface);
-      font-size: 14px;
-      font-weight: 600;
-    }
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 22px;
-      box-shadow: 0 10px 24px rgba(30, 41, 59, 0.08);
+      margin: 0;
     }
     .sub {
       color: var(--sub);
-      margin-bottom: 16px;
+      margin: 6px 0 0;
       font-size: 14px;
-      line-height: 1.6;
-    }
-    .grid {
-      display: grid;
-      gap: 14px;
-      grid-template-columns: 1fr 1fr;
-    }
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .full { grid-column: 1 / -1; }
-    label {
-      font-size: 13px;
-      font-weight: 700;
-    }
-    input, select, textarea {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 14px;
-      font-family: inherit;
-      outline: none;
-      background: #fff;
-    }
-    input:focus, select:focus, textarea:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
-    }
-    textarea {
-      min-height: 120px;
-      resize: vertical;
-    }
-    .actions {
-      margin-top: 18px;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
+      line-height: 1.5;
     }
     .btn {
       border: none;
@@ -109,106 +55,699 @@
       font-size: 14px;
       font-weight: 700;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-decoration: none;
     }
-    .btn-primary {
-      background: var(--primary);
-      color: #fff;
-    }
-    .btn-primary:hover {
-      background: var(--primary-dk);
-    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dk); }
     .btn-ghost {
       background: #fff;
       border: 1px solid var(--border);
       color: var(--text);
     }
-    .done {
-      display: none;
-      margin-top: 14px;
-      border: 1px solid #bbf7d0;
-      background: #f0fdf4;
-      color: #166534;
+    .btn-ghost:hover { background: #f8fafc; }
+    .btn-danger {
+      background: #fee2e2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+    }
+    .top-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 10px 24px rgba(30, 41, 59, 0.08);
+    }
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .search {
+      min-width: 220px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 10px 12px;
+      background: #fff;
+      padding: 8px 10px;
+    }
+    .search input {
+      border: none;
+      outline: none;
+      flex: 1;
       font-size: 14px;
+    }
+    .table-wrap {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 860px;
+    }
+    thead th {
+      text-align: left;
+      padding: 12px 14px;
+      font-size: 12px;
+      text-transform: uppercase;
+      color: var(--sub);
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    tbody td {
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      vertical-align: top;
+    }
+    tbody tr:hover { background: #f8fbff; }
+    tbody tr:last-child td { border-bottom: none; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 12px;
       font-weight: 700;
     }
-    .done.show { display: block; }
+    .badge-open { background: #dcfce7; color: #166534; }
+    .badge-stop { background: #fee2e2; color: #991b1b; }
+    .actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .mini {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 10px;
+      cursor: pointer;
+      color: var(--text);
+      text-decoration: none;
+    }
+    .mini:hover { background: #f8fafc; }
+    .empty {
+      margin: 14px;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      text-align: center;
+      color: var(--sub);
+      font-size: 14px;
+    }
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      background: #0f172a;
+      color: #fff;
+      border-radius: 10px;
+      font-size: 14px;
+      padding: 10px 14px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: .2s;
+      z-index: 999;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
 
-    @media (max-width: 720px) {
-      .grid { grid-template-columns: 1fr; }
-      .title { font-size: 22px; }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.48);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s;
+      z-index: 1200;
+    }
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal {
+      width: 980px;
+      max-width: 100%;
+      max-height: 92vh;
+      overflow: auto;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 20px 56px rgba(15, 23, 42, 0.26);
+    }
+    .modal-head {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+    }
+    .modal-title {
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .close-btn {
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 9px;
+      background: #f1f5f9;
+      cursor: pointer;
+      font-size: 18px;
+    }
+    .close-btn:hover { background: #e2e8f0; }
+    .modal-body {
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .field label {
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .field input,
+    .field textarea,
+    .field select {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 10px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+    }
+    .field input:focus,
+    .field textarea:focus,
+    .field select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+    }
+    .field textarea {
+      min-height: 88px;
+      resize: vertical;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .question-box {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      background: #f8fafc;
+      display: grid;
+      gap: 8px;
+    }
+    .question-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .question-options {
+      display: none;
+    }
+    .question-options.show {
+      display: block;
+    }
+    .modal-foot {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      border-top: 1px solid var(--border);
+      padding: 14px 16px;
+      position: sticky;
+      bottom: 0;
+      background: #fff;
+    }
+
+    @media (max-width: 760px) {
+      .row { grid-template-columns: 1fr; }
+      .title { font-size: 23px; }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="head">
-      <h1 class="title">アンケート調査</h1>
-      <a class="back" href="index.html">案件管理へ戻る</a>
+      <div>
+        <h1 class="title">アンケート管理</h1>
+        <p class="sub">単一回答ページ方式: 公開URLにトークンを付けて複数アンケートを運用します。</p>
+      </div>
+      <div class="top-actions">
+        <a class="btn btn-ghost" href="index.html">案件管理へ戻る</a>
+        <button class="btn btn-primary" id="newFormBtn" type="button">+ 新規アンケート作成</button>
+      </div>
     </div>
 
     <div class="card">
-      <p class="sub">案件対応の品質向上のため、以下のアンケートにご協力ください。</p>
-
-      <form id="surveyForm">
-        <div class="grid">
-          <div class="field">
-            <label for="name">お名前</label>
-            <input id="name" type="text" placeholder="例: 山本 太郎" required />
-          </div>
-          <div class="field">
-            <label for="company">会社名</label>
-            <input id="company" type="text" placeholder="例: 株式会社○○" />
-          </div>
-          <div class="field">
-            <label for="satisfaction">満足度</label>
-            <select id="satisfaction" required>
-              <option value="">選択してください</option>
-              <option>とても満足</option>
-              <option>満足</option>
-              <option>普通</option>
-              <option>不満</option>
-              <option>とても不満</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="speed">対応速度</label>
-            <select id="speed" required>
-              <option value="">選択してください</option>
-              <option>非常に速い</option>
-              <option>速い</option>
-              <option>普通</option>
-              <option>遅い</option>
-              <option>非常に遅い</option>
-            </select>
-          </div>
-          <div class="field full">
-            <label for="comment">ご意見・ご要望</label>
-            <textarea id="comment" placeholder="改善点やご要望をご記入ください"></textarea>
-          </div>
+      <div class="toolbar">
+        <div class="search">
+          <span>🔍</span>
+          <input id="searchInput" type="text" placeholder="タイトル検索" />
         </div>
-
-        <div class="actions">
-          <button class="btn btn-primary" type="submit">送信する</button>
-          <button class="btn btn-ghost" type="reset">入力をクリア</button>
-        </div>
-      </form>
-
-      <div class="done" id="doneMsg">送信ありがとうございました。内容を受け付けました。</div>
+        <button class="btn btn-ghost" id="reloadBtn" type="button">再読み込み</button>
+      </div>
+      <div class="table-wrap" id="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>タイトル</th>
+              <th>公開状態</th>
+              <th>設問数</th>
+              <th>回答件数</th>
+              <th>作成日</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="formsBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="emptyBox">アンケートがありません。右上の「新規アンケート作成」から作成してください。</div>
     </div>
   </div>
 
-  <script>
-    const surveyForm = document.getElementById('surveyForm');
-    const doneMsg = document.getElementById('doneMsg');
+  <div class="modal-overlay" id="formModalOverlay">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title" id="formModalTitle">新規アンケート作成</div>
+        <button class="close-btn" id="closeFormModalBtn" type="button">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="fTitle">タイトル <span style="color:var(--danger)">*</span></label>
+          <input id="fTitle" type="text" placeholder="例: 案件完了後アンケート" />
+        </div>
+        <div class="field">
+          <label for="fIntro">アンケート案内文</label>
+          <textarea id="fIntro" placeholder="回答者向けの説明文"></textarea>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="fPublished">公開状態</label>
+            <select id="fPublished">
+              <option value="true">公開</option>
+              <option value="false">停止</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="fToken">公開トークン（URL識別子）</label>
+            <input id="fToken" type="text" placeholder="自動生成されます" />
+          </div>
+        </div>
 
-    surveyForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-      doneMsg.classList.add('show');
-      surveyForm.reset();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+        <div class="field">
+          <label>設問</label>
+          <div id="questionsWrap"></div>
+          <button class="btn btn-ghost" id="addQuestionBtn" type="button">+ 設問を追加</button>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" id="cancelFormBtn" type="button">キャンセル</button>
+        <button class="btn btn-primary" id="saveFormBtn" type="button">保存する</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://vspmaejoftjvooohfqbu.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcG1hZWpvZnRqdm9vb2hmcWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODkxODQsImV4cCI6MjA5Mzg2NTE4NH0.vt33TF7OfmNHOMFUP-_Ch6TESVBPW22d-1W3LKkbrHI';
+
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const PUBLIC_BASE = 'survey_public.html';
+
+    let forms = [];
+    let responseCounts = {};
+    let editingId = null;
+
+    const formsBody = document.getElementById('formsBody');
+    const emptyBox = document.getElementById('emptyBox');
+    const tableWrap = document.getElementById('tableWrap');
+    const searchInput = document.getElementById('searchInput');
+    const formModalOverlay = document.getElementById('formModalOverlay');
+    const questionsWrap = document.getElementById('questionsWrap');
+
+    function uid() {
+      return Math.random().toString(36).slice(2, 10);
+    }
+
+    function slugify(v) {
+      return String(v || '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 40);
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2600);
+    }
+
+    function fmtDateTime(value) {
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return '-';
+      return d.toLocaleString('ja-JP', {
+        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+      });
+    }
+
+    function parseQuestions(raw) {
+      if (Array.isArray(raw)) return raw;
+      if (!raw) return [];
+      try {
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function getPublicUrl(token) {
+      const safe = encodeURIComponent(token || '');
+      return `${location.origin}${location.pathname.replace(/[^/]+$/, '')}${PUBLIC_BASE}?token=${safe}`;
+    }
+
+    function renderRows() {
+      const q = searchInput.value.toLowerCase().trim();
+      const list = forms.filter(f => !q || (f.title || '').toLowerCase().includes(q));
+
+      if (!list.length) {
+        tableWrap.style.display = 'none';
+        emptyBox.style.display = 'block';
+        formsBody.innerHTML = '';
+        return;
+      }
+
+      tableWrap.style.display = 'block';
+      emptyBox.style.display = 'none';
+
+      formsBody.innerHTML = list.map(form => {
+        const published = !!form.is_published;
+        const count = responseCounts[form.id] || 0;
+        const questions = parseQuestions(form.questions_json);
+        const publicUrl = getPublicUrl(form.public_token);
+        return `
+          <tr>
+            <td>${form.id}</td>
+            <td>
+              <strong>${form.title}</strong><br>
+              <span style="font-size:12px;color:var(--sub)">${form.intro_text || ''}</span>
+            </td>
+            <td><span class="badge ${published ? 'badge-open' : 'badge-stop'}">${published ? '公開' : '停止'}</span></td>
+            <td>${questions.length}</td>
+            <td>${count}</td>
+            <td>${fmtDateTime(form.created_at)}</td>
+            <td>
+              <div class="actions">
+                <button class="mini" onclick="openEdit(${form.id})">編集</button>
+                <a class="mini" href="${publicUrl}" target="_blank" rel="noopener noreferrer">公開ページ</a>
+                <button class="mini" onclick="copyPublicUrl('${publicUrl}')">URLコピー</button>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    function questionTemplate(question = {}) {
+      const qid = question.id || uid();
+      const type = question.type || 'text';
+      const label = question.label || '';
+      const required = question.required ? 'checked' : '';
+      const options = (question.options || []).join('\n');
+      return `
+        <div class="question-box" data-qid="${qid}">
+          <div class="question-head">
+            <span>設問</span>
+            <button class="btn btn-danger" type="button" onclick="removeQuestion('${qid}')">削除</button>
+          </div>
+          <div class="field">
+            <label>設問文</label>
+            <input type="text" class="q-label" value="${label.replace(/"/g, '&quot;')}" placeholder="例: 担当者の対応は丁寧でしたか？" />
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>入力タイプ</label>
+              <select class="q-type" onchange="toggleOptions('${qid}')">
+                <option value="text" ${type === 'text' ? 'selected' : ''}>1行テキスト</option>
+                <option value="textarea" ${type === 'textarea' ? 'selected' : ''}>複数行テキスト</option>
+                <option value="select" ${type === 'select' ? 'selected' : ''}>選択肢（プルダウン）</option>
+                <option value="radio" ${type === 'radio' ? 'selected' : ''}>選択肢（ラジオ）</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>必須</label>
+              <select class="q-required">
+                <option value="true" ${required ? 'selected' : ''}>必須</option>
+                <option value="false" ${required ? '' : 'selected'}>任意</option>
+              </select>
+            </div>
+          </div>
+          <div class="field question-options ${type === 'select' || type === 'radio' ? 'show' : ''}">
+            <label>選択肢（1行に1項目）</label>
+            <textarea class="q-options" placeholder="とても満足\n満足\n普通\n不満\nとても不満">${options}</textarea>
+          </div>
+        </div>`;
+    }
+
+    function setQuestionList(questions) {
+      questionsWrap.innerHTML = '';
+      if (!questions.length) {
+        questionsWrap.innerHTML = questionTemplate();
+        return;
+      }
+      questions.forEach(q => {
+        questionsWrap.insertAdjacentHTML('beforeend', questionTemplate(q));
+      });
+    }
+
+    function collectQuestions() {
+      const boxes = [...questionsWrap.querySelectorAll('.question-box')];
+      const questions = boxes.map(box => {
+        const id = box.dataset.qid;
+        const label = box.querySelector('.q-label').value.trim();
+        const type = box.querySelector('.q-type').value;
+        const required = box.querySelector('.q-required').value === 'true';
+        const optionsRaw = box.querySelector('.q-options')?.value || '';
+        const options = optionsRaw
+          .split('\n')
+          .map(v => v.trim())
+          .filter(Boolean);
+        return { id, label, type, required, options };
+      });
+
+      for (const q of questions) {
+        if (!q.label) {
+          return { error: '設問文が空の項目があります。' };
+        }
+        if ((q.type === 'select' || q.type === 'radio') && q.options.length < 2) {
+          return { error: '選択肢タイプの設問は2つ以上の選択肢が必要です。' };
+        }
+      }
+      return { questions };
+    }
+
+    function openFormModal(isNew = true) {
+      document.getElementById('formModalTitle').textContent = isNew ? '新規アンケート作成' : 'アンケート編集';
+      formModalOverlay.classList.add('open');
+    }
+
+    function closeFormModal() {
+      formModalOverlay.classList.remove('open');
+    }
+
+    function resetFormModal() {
+      editingId = null;
+      document.getElementById('fTitle').value = '';
+      document.getElementById('fIntro').value = '';
+      document.getElementById('fPublished').value = 'true';
+      document.getElementById('fToken').value = '';
+      setQuestionList([]);
+    }
+
+    async function loadForms() {
+      const { data, error } = await db
+        .from('survey_forms')
+        .select('id,title,intro_text,is_published,public_token,questions_json,created_at')
+        .order('id', { ascending: false });
+      if (error) {
+        showToast('アンケート読込に失敗: ' + error.message);
+        return;
+      }
+      forms = data || [];
+      await loadResponseCounts();
+      renderRows();
+    }
+
+    async function loadResponseCounts() {
+      const { data, error } = await db
+        .from('survey_responses')
+        .select('form_id');
+      responseCounts = {};
+      if (error) {
+        showToast('回答件数読込に失敗: ' + error.message);
+        return;
+      }
+      (data || []).forEach(r => {
+        const id = r.form_id;
+        responseCounts[id] = (responseCounts[id] || 0) + 1;
+      });
+    }
+
+    async function saveForm() {
+      const title = document.getElementById('fTitle').value.trim();
+      const intro = document.getElementById('fIntro').value.trim();
+      const isPublished = document.getElementById('fPublished').value === 'true';
+      const rawToken = document.getElementById('fToken').value.trim();
+      let token = rawToken.toLowerCase();
+
+      if (!title) {
+        showToast('タイトルは必須です。');
+        return;
+      }
+
+      if (!token) {
+        token = slugify(title) || `survey-${uid()}`;
+      }
+
+      if (rawToken && !/^[a-z0-9-]{3,60}$/.test(rawToken)) {
+        showToast('公開トークンは英小文字・数字・ハイフンで3-60文字です。');
+        return;
+      }
+
+      if (!/^[a-z0-9-]{3,60}$/.test(token)) {
+        token = `survey-${uid()}`;
+      }
+
+      const picked = collectQuestions();
+      if (picked.error) {
+        showToast(picked.error);
+        return;
+      }
+
+      const payload = {
+        title,
+        intro_text: intro,
+        is_published: isPublished,
+        public_token: token,
+        questions_json: picked.questions,
+      };
+
+      let error;
+      if (editingId) {
+        ({ error } = await db.from('survey_forms').update(payload).eq('id', editingId));
+      } else {
+        ({ error } = await db.from('survey_forms').insert([payload]));
+      }
+
+      if (error) {
+        showToast('保存に失敗: ' + error.message);
+        return;
+      }
+
+      showToast('アンケートを保存しました。');
+      closeFormModal();
+      await loadForms();
+    }
+
+    window.openEdit = function (id) {
+      const form = forms.find(x => x.id === id);
+      if (!form) return;
+      editingId = id;
+      document.getElementById('fTitle').value = form.title || '';
+      document.getElementById('fIntro').value = form.intro_text || '';
+      document.getElementById('fPublished').value = form.is_published ? 'true' : 'false';
+      document.getElementById('fToken').value = form.public_token || '';
+      setQuestionList(parseQuestions(form.questions_json));
+      openFormModal(false);
+    };
+
+    window.removeQuestion = function (qid) {
+      const box = questionsWrap.querySelector(`[data-qid="${qid}"]`);
+      if (!box) return;
+      box.remove();
+      if (!questionsWrap.children.length) {
+        questionsWrap.innerHTML = questionTemplate();
+      }
+    };
+
+    window.toggleOptions = function (qid) {
+      const box = questionsWrap.querySelector(`[data-qid="${qid}"]`);
+      if (!box) return;
+      const type = box.querySelector('.q-type').value;
+      const optionsBox = box.querySelector('.question-options');
+      optionsBox.classList.toggle('show', type === 'select' || type === 'radio');
+    };
+
+    window.copyPublicUrl = async function (url) {
+      try {
+        await navigator.clipboard.writeText(url);
+        showToast('公開URLをコピーしました。');
+      } catch (_) {
+        showToast('URLコピーに失敗しました。');
+      }
+    };
+
+    document.getElementById('newFormBtn').addEventListener('click', () => {
+      resetFormModal();
+      openFormModal(true);
     });
+    document.getElementById('reloadBtn').addEventListener('click', loadForms);
+    document.getElementById('searchInput').addEventListener('input', renderRows);
+    document.getElementById('addQuestionBtn').addEventListener('click', () => {
+      questionsWrap.insertAdjacentHTML('beforeend', questionTemplate());
+    });
+    document.getElementById('saveFormBtn').addEventListener('click', saveForm);
+    document.getElementById('closeFormModalBtn').addEventListener('click', closeFormModal);
+    document.getElementById('cancelFormBtn').addEventListener('click', closeFormModal);
+    formModalOverlay.addEventListener('click', (event) => {
+      if (event.target === formModalOverlay) closeFormModal();
+    });
+
+    loadForms();
   </script>
 </body>
 </html>
