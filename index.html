@@ -20,7 +20,6 @@
       --border:     #e2e8f0;
       --text:       #1e293b;
       --text-sub:   #64748b;
-      --sidebar-w:  240px;
       --header-h:   64px;
     }
     body {
@@ -31,99 +30,8 @@
       min-height: 100vh;
     }
 
-    /* ===== Sidebar ===== */
-    .sidebar {
-      width: var(--sidebar-w);
-      background: #1e293b;
-      color: #cbd5e1;
-      display: flex;
-      flex-direction: column;
-      position: fixed;
-      top: 0; left: 0;
-      height: 100vh;
-      z-index: 200;
-      transition: transform .25s ease;
-    }
-    .sidebar-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.45);
-      z-index: 190;
-    }
-    .sidebar-overlay.open { display: block; }
-    .hamburger {
-      display: none;
-      position: fixed;
-      top: 14px; left: 12px;
-      z-index: 180;
-      background: #1e293b;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      width: 40px; height: 40px;
-      font-size: 20px;
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
-    }
-    .sidebar-logo {
-      height: var(--header-h);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 0 20px;
-      border-bottom: 1px solid #334155;
-      flex-shrink: 0;
-    }
-    .sidebar-logo .logo-icon {
-      width: 36px; height: 36px;
-      background: var(--primary);
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
-    }
-    .sidebar-logo span { font-size: 15px; font-weight: 700; color: #f1f5f9; }
-    .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
-    .nav-section-label {
-      font-size: 11px; font-weight: 600;
-      color: #475569;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      padding: 12px 20px 6px;
-    }
-    .nav-item {
-      display: flex; align-items: center; gap: 12px;
-      padding: 10px 20px;
-      cursor: pointer;
-      border-radius: 0;
-      transition: background .15s;
-      font-size: 14px;
-      color: #94a3b8;
-      text-decoration: none;
-    }
-    .nav-item:hover { background: #334155; color: #f1f5f9; }
-    .nav-item.active { background: #1d4ed8; color: #fff; }
-    .nav-item .nav-icon { font-size: 18px; width: 22px; text-align: center; flex-shrink: 0; }
-    .sidebar-footer {
-      padding: 16px 20px;
-      border-top: 1px solid #334155;
-      font-size: 13px;
-    }
-    .user-info { display: flex; align-items: center; gap: 10px; }
-    .user-avatar {
-      width: 34px; height: 34px;
-      background: var(--primary);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700; color: #fff; font-size: 13px; flex-shrink: 0;
-    }
-    .user-name { font-weight: 600; color: #f1f5f9; font-size: 13px; }
-    .user-role { color: #64748b; font-size: 11px; }
-
     /* ===== Main layout ===== */
     .main-wrapper {
-      margin-left: var(--sidebar-w);
       flex: 1;
       display: flex;
       flex-direction: column;
@@ -245,6 +153,20 @@
       cursor: pointer; outline: none;
     }
     .filter-select:focus { border-color: var(--primary); }
+    .view-switch {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .view-switch .btn {
+      padding: 8px 14px;
+    }
+    .view-switch .btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(37,99,235,.22);
+    }
 
     /* ===== Table ===== */
     .table-card {
@@ -659,11 +581,7 @@
       .timeline-layout { grid-template-columns: 1fr; }
     }
     @media (max-width: 768px) {
-      .sidebar { transform: translateX(calc(-1 * var(--sidebar-w))); }
-      .sidebar.open { transform: translateX(0); }
-      .main-wrapper { margin-left: 0; }
-      .hamburger { display: flex; }
-      .header { padding: 0 12px 0 60px; }
+      .header { padding: 0 12px; }
     }
 
     /* ===== Scrollbar ===== */
@@ -673,56 +591,6 @@
   </style>
 </head>
 <body>
-
-<!-- ===== Mobile overlay & hamburger ===== -->
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
-<button class="hamburger" id="hamburgerBtn" aria-label="メニュー">☰</button>
-
-<!-- ===== Sidebar ===== -->
-<aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo">
-    <div class="logo-icon">📋</div>
-    <span>案件管理</span>
-  </div>
-  <nav class="sidebar-nav">
-    <div class="nav-section-label">メニュー</div>
-    <a class="nav-item active" href="#">
-      <span class="nav-icon">🏠</span> ダッシュボード
-    </a>
-    <a class="nav-item" href="#">
-      <span class="nav-icon">📁</span> 案件一覧
-    </a>
-    <a class="nav-item" href="policy_management.html">
-      <span class="nav-icon">🧭</span> 政策管理
-    </a>
-    <a class="nav-item" href="#">
-      <span class="nav-icon">👥</span> 顧客管理
-    </a>
-    <a class="nav-item" href="#">
-      <span class="nav-icon">📅</span> スケジュール
-    </a>
-    <div class="nav-section-label">レポート</div>
-    <a class="nav-item" href="#">
-      <span class="nav-icon">📊</span> 分析・レポート
-    </a>
-    <a class="nav-item" href="#">
-      <span class="nav-icon">📤</span> エクスポート
-    </a>
-    <div class="nav-section-label">設定</div>
-    <a class="nav-item" href="#">
-      <span class="nav-icon">⚙️</span> システム設定
-    </a>
-  </nav>
-  <div class="sidebar-footer">
-    <div class="user-info">
-      <div class="user-avatar">山</div>
-      <div>
-        <div class="user-name">山本 太郎</div>
-        <div class="user-role">管理者</div>
-      </div>
-    </div>
-  </div>
-</aside>
 
 <!-- ===== Main ===== -->
 <div class="main-wrapper">
@@ -795,11 +663,16 @@
         <option value="低">低</option>
       </select>
       <select class="filter-select" id="sortSelect">
+        <option value="assignee_asc">依頼先担当者（昇順）</option>
         <option value="id_desc">登録日（新しい順）</option>
         <option value="id_asc">登録日（古い順）</option>
         <option value="name_asc">案件名（昇順）</option>
         <option value="deadline_asc">期限（近い順）</option>
       </select>
+      <div class="view-switch">
+        <button class="btn btn-ghost" id="showCompletedBtn" type="button">完了分の表示</button>
+        <button class="btn btn-ghost active" id="showInProgressBtn" type="button">進行中表示</button>
+      </div>
     </div>
 
     <!-- Table -->
@@ -1068,6 +941,7 @@
   let timelineCaseId = null;
   const PAGE_SIZE = 8;
   let currentPage = 1;
+  let workViewMode = 'active';
   const pendingPhotoUploads = { f: null, t: null };
 
   // ===== Helpers =====
@@ -1523,15 +1397,28 @@
       const matchDeleted = showDeletedOnly ? !!c.is_deleted : !c.is_deleted;
       const matchSt = showDeletedOnly ? true : (!st || c.status === st);
       const matchPr = !pr || c.priority === pr;
-      return (matchQ || matchQLocation) && matchDeleted && matchSt && matchPr;
+      const isCompletedWork = c.work_status === '完了';
+      const matchWorkView = workViewMode === 'completed' ? isCompletedWork : !isCompletedWork;
+      return (matchQ || matchQLocation) && matchDeleted && matchSt && matchPr && matchWorkView;
     });
     list = list.slice().sort((a, b) => {
+      if (srt === 'assignee_asc') {
+        return (a.assignee || '').localeCompare(b.assignee || '', 'ja') || (b.id - a.id);
+      }
       if (srt === 'id_asc')       return a.id - b.id;
       if (srt === 'name_asc')     return (a.name || '').localeCompare(b.name || '');
       if (srt === 'deadline_asc') return (a.deadline || '').localeCompare(b.deadline || '');
-      return b.id - a.id; // id_desc default
+      return (a.assignee || '').localeCompare(b.assignee || '', 'ja') || (b.id - a.id);
     });
     return list;
+  }
+
+  function setWorkViewMode(mode) {
+    workViewMode = mode === 'completed' ? 'completed' : 'active';
+    document.getElementById('showCompletedBtn').classList.toggle('active', workViewMode === 'completed');
+    document.getElementById('showInProgressBtn').classList.toggle('active', workViewMode === 'active');
+    currentPage = 1;
+    renderTable();
   }
 
   // ===== Render =====
@@ -1892,6 +1779,8 @@
   document.getElementById('addTimelineBtn').onclick = addTimelineEntry;
   document.getElementById('saveBtn').onclick        = saveCase;
   document.getElementById('exportBtn').onclick      = exportCSV;
+  document.getElementById('showCompletedBtn').onclick = () => setWorkViewMode('completed');
+  document.getElementById('showInProgressBtn').onclick = () => setWorkViewMode('active');
   bindPhotoField('f');
   bindPhotoField('t');
   setTimelineSaveLoading(false);
@@ -1914,15 +1803,6 @@
 
   // ===== Init =====
   loadCases();
-
-  // ===== Mobile sidebar toggle =====
-  const hamburgerBtn = document.getElementById('hamburgerBtn');
-  const sidebarEl    = document.getElementById('sidebar');
-  const overlayEl    = document.getElementById('sidebarOverlay');
-  function openSidebar()  { sidebarEl.classList.add('open'); overlayEl.classList.add('open'); }
-  function closeSidebar() { sidebarEl.classList.remove('open'); overlayEl.classList.remove('open'); }
-  hamburgerBtn.addEventListener('click', () => sidebarEl.classList.contains('open') ? closeSidebar() : openSidebar());
-  overlayEl.addEventListener('click', closeSidebar);
 </script>
 </body>
 </html>
