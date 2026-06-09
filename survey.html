@@ -176,6 +176,30 @@
       padding: 4px 8px;
       font-size: 11px;
     }
+    .public-url .url-chip {
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      line-height: 1.5;
+    }
+    .public-url .qr-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 60px;
+      height: 60px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      padding: 4px;
+      text-decoration: none;
+      flex: 0 0 auto;
+    }
+    .public-url .qr-link img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
     .mini {
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -602,6 +626,11 @@
       return `${location.origin}${location.pathname.replace(/[^/]+$/, '')}${PUBLIC_BASE}?token=${safe}`;
     }
 
+    function getQrImageUrl(url, size = 120) {
+      const safe = encodeURIComponent(url || '');
+      return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${safe}`;
+    }
+
     function renderRows() {
       const q = searchInput.value.toLowerCase().trim();
       const list = forms.filter(f => !q || (f.title || '').toLowerCase().includes(q));
@@ -621,6 +650,7 @@
         const count = responseCounts[form.id] || 0;
         const questions = parseQuestions(form.questions_json);
         const publicUrl = getPublicUrl(form.public_token);
+        const qrUrl = getQrImageUrl(publicUrl);
         return `
           <tr>
             <td>${form.id}</td>
@@ -629,8 +659,11 @@
               <span style="font-size:12px;color:var(--sub)">${form.intro_text || ''}</span>
               <div class="public-url">
                 <span>公開URL:</span>
-                <code>${publicUrl}</code>
+                <code class="url-chip">${publicUrl}</code>
                 <button class="mini" type="button" onclick="copyPublicUrl('${publicUrl}')">コピー</button>
+                <a class="qr-link" href="${qrUrl}" target="_blank" rel="noopener noreferrer" title="QRコードを開く">
+                  <img src="${qrUrl}" alt="公開URLのQRコード" loading="lazy" />
+                </a>
               </div>
             </td>
             <td><span class="badge ${published ? 'badge-open' : 'badge-stop'}">${published ? '公開' : '停止'}</span></td>
