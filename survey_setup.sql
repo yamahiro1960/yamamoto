@@ -23,10 +23,13 @@ create table if not exists public.survey_responses (
   id bigserial primary key,
   form_id bigint not null references public.survey_forms(id) on delete cascade,
   respondent_name text,
+  respondent_email text,
   answers_json jsonb not null default '{}'::jsonb,
   client_meta jsonb not null default '{}'::jsonb,
   submitted_at timestamptz not null default now()
 );
+
+alter table public.survey_responses add column if not exists respondent_email text;
 
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on table public.survey_forms to authenticated;

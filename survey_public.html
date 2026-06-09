@@ -203,6 +203,11 @@
           <label for="respondentName">お名前（任意）</label>
           <input id="respondentName" type="text" placeholder="例: 山本 太郎" />
         </div>
+        <div class="field">
+          <label for="respondentEmail">メールアドレス（任意）</label>
+          <input id="respondentEmail" type="text" placeholder="例: user@example.com" />
+          <div class="helper">入力された場合のみ、回答受付メールを送信します。</div>
+        </div>
         <div id="dynamicQuestions"></div>
         <input id="hpField" type="text" style="display:none" autocomplete="off" tabindex="-1" />
         <div class="actions">
@@ -215,9 +220,15 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>
     const SUPABASE_URL = 'https://vspmaejoftjvooohfqbu.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcG1hZWpvZnRqdm9vb2hmcWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODkxODQsImV4cCI6MjA5Mzg2NTE4NH0.vt33TF7OfmNHOMFUP-_Ch6TESVBPW22d-1W3LKkbrHI';
+
+    // EmailJS settings: set your values to enable confirmation mail.
+    const EMAILJS_PUBLIC_KEY = '4Xt6mEmbuSxVZpy7f';
+    const EMAILJS_SERVICE_ID = 'service_072qk2p';
+    const EMAILJS_TEMPLATE_ID = 'template_42yb5fi';
 
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -249,6 +260,33 @@
         return Array.isArray(parsed) ? parsed : [];
       } catch (_) {
         return [];
+      }
+    }
+
+    function isValidEmail(value) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+    }
+
+    function emailSendEnabled() {
+      return !!(EMAILJS_PUBLIC_KEY && EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && window.emailjs);
+    }
+
+    async function sendConfirmationMail(toEmail, toName, formTitle) {
+      if (!emailSendEnabled()) {
+        return { sent: false, skipped: true };
+      }
+      try {
+        emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+          to_email: toEmail,
+          to_name: toName || 'ご回答者様',
+          form_title: formTitle || 'アンケート',
+          submitted_at: new Date().toLocaleString('ja-JP'),
+          form_url: location.href,
+        });
+        return { sent: true, skipped: false };
+      } catch (error) {
+        return { sent: false, skipped: false, error };
       }
     }
 
@@ -378,6 +416,7 @@
       const payload = {
         form_id: currentForm.id,
         respondent_name: document.getElementById('respondentName').value.trim(),
+        respondent_email: document.getElementById('respondentEmail').value.trim(),
         answers_json: collected.answers,
         client_meta: {
           userAgent: navigator.userAgent,
@@ -385,6 +424,13 @@
           submittedFrom: location.href,
         },
       };
+
+      if (payload.respondent_email && !isValidEmail(payload.respondent_email)) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '送信する';
+        showStatus('メールアドレス形式が正しくありません。', false);
+        return;
+      }
 
       const { error } = await db.from('survey_responses').insert([payload]);
 
@@ -396,8 +442,21 @@
         return;
       }
 
+      const respondentEmail = payload.respondent_email;
+      let message = 'ご回答ありがとうございました。送信を受け付けました。';
+      let ok = true;
+      if (respondentEmail) {
+        const mailResult = await sendConfirmationMail(respondentEmail, payload.respondent_name, currentForm.title);
+        if (mailResult.sent) {
+          message = 'ご回答ありがとうございました。受付メールを送信しました。';
+        } else if (!mailResult.skipped) {
+          message = '回答は保存されましたが、確認メールの送信に失敗しました。';
+          ok = false;
+        }
+      }
+
       formEl.reset();
-      showStatus('ご回答ありがとうございました。送信を受け付けました。', true);
+      showStatus(message, ok);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 

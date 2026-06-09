@@ -880,7 +880,7 @@
 
       const { data, error } = await db
         .from('survey_responses')
-        .select('id,respondent_name,answers_json,submitted_at,client_meta')
+        .select('id,respondent_name,respondent_email,answers_json,submitted_at,client_meta')
         .eq('form_id', formId)
         .order('submitted_at', { ascending: false });
 
@@ -902,7 +902,7 @@
           <div class="response-card">
             <div class="response-head">
               <strong>回答 ${list.length - index}</strong>
-              <span class="response-meta">${fmtDateTime(item.submitted_at)} / ${item.respondent_name || '匿名'}</span>
+              <span class="response-meta">${fmtDateTime(item.submitted_at)} / ${item.respondent_name || '匿名'}${item.respondent_email ? ` / ${item.respondent_email}` : ''}</span>
             </div>
             <div class="response-items">
               ${itemsHtml || '<div class="empty" style="margin:0">回答内容がありません。</div>'}
