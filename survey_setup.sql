@@ -23,6 +23,14 @@ create table if not exists public.survey_responses (
   submitted_at timestamptz not null default now()
 );
 
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on table public.survey_forms to authenticated;
+grant select on table public.survey_forms to anon;
+grant select on table public.survey_responses to authenticated;
+grant insert on table public.survey_responses to anon;
+grant usage, select on sequence public.survey_forms_id_seq to authenticated;
+grant usage, select on sequence public.survey_responses_id_seq to anon, authenticated;
+
 create index if not exists idx_survey_forms_public_token on public.survey_forms(public_token);
 create index if not exists idx_survey_forms_published on public.survey_forms(is_published);
 create index if not exists idx_survey_responses_form_id on public.survey_responses(form_id);

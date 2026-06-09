@@ -567,6 +567,17 @@
       return true;
     }
 
+    async function ensureValidSession() {
+      const { data, error } = await db.auth.getUser();
+      if (error || !data?.user) {
+        currentSession = null;
+        setAuthUi(false, 'ログイン状態が切れました。案件管理画面で再ログインしてください。');
+        showToast('ログインの有効期限が切れています。再ログインしてください。');
+        return false;
+      }
+      return true;
+    }
+
     function fmtDateTime(value) {
       const d = new Date(value);
       if (Number.isNaN(d.getTime())) return '-';
@@ -763,6 +774,7 @@
 
     async function loadForms() {
       if (!requireAuth()) return;
+      if (!(await ensureValidSession())) return;
       const { data, error } = await db
         .from('survey_forms')
         .select('id,title,intro_text,is_published,public_token,questions_json,created_at')
@@ -793,6 +805,7 @@
 
     async function openResponses(formId) {
       if (!requireAuth()) return;
+      if (!(await ensureValidSession())) return;
       const form = forms.find(x => x.id === formId);
       if (!form) return;
 
@@ -838,6 +851,7 @@
 
     async function saveForm() {
       if (!requireAuth()) return;
+      if (!(await ensureValidSession())) return;
       const title = document.getElementById('fTitle').value.trim();
       const intro = document.getElementById('fIntro').value.trim();
       const isPublished = document.getElementById('fPublished').value === 'true';
@@ -885,6 +899,12 @@
       }
 
       if (error) {
+        if ((error.message || '').toLowerCase().includes('permission denied')) {
+          currentSession = null;
+          setAuthUi(false, '保存権限がありません。案件管理画面で再ログインしてください。');
+          showToast('ログイン状態を確認できません。案件管理画面で再ログインしてください。');
+          return;
+        }
         showToast('保存に失敗: ' + error.message);
         return;
       }
