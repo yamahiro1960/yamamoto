@@ -566,6 +566,16 @@
         </div>
         <div class="row">
           <div class="field">
+            <label for="fEditDaysBefore">回答修正期限（開催日の何日前まで）</label>
+            <input id="fEditDaysBefore" type="number" min="0" step="1" value="3" />
+          </div>
+          <div class="field">
+            <label for="fEditMaxCount">回答修正回数上限（-1で無制限）</label>
+            <input id="fEditMaxCount" type="number" min="-1" step="1" value="-1" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
             <label for="fPublished">公開状態</label>
             <select id="fPublished">
               <option value="true">公開</option>
@@ -844,6 +854,39 @@
       return normalizeApplicationFields(raw);
     }
 
+    function getDefaultEditPolicy() {
+      return { days_before_event: 3, max_edits: -1 };
+    }
+
+    function normalizeEditPolicy(raw) {
+      const defaults = getDefaultEditPolicy();
+      const source = raw && typeof raw === 'object' ? raw : {};
+      let days = Number(source.days_before_event);
+      let max = Number(source.max_edits);
+      if (!Number.isFinite(days)) days = defaults.days_before_event;
+      if (!Number.isFinite(max)) max = defaults.max_edits;
+      days = Math.max(0, Math.floor(days));
+      max = Math.floor(max);
+      if (max < -1) max = -1;
+      return {
+        days_before_event: days,
+        max_edits: max,
+      };
+    }
+
+    function setEditPolicyControls(raw) {
+      const policy = normalizeEditPolicy(raw);
+      document.getElementById('fEditDaysBefore').value = String(policy.days_before_event);
+      document.getElementById('fEditMaxCount').value = String(policy.max_edits);
+    }
+
+    function collectEditPolicy() {
+      return normalizeEditPolicy({
+        days_before_event: document.getElementById('fEditDaysBefore').value,
+        max_edits: document.getElementById('fEditMaxCount').value,
+      });
+    }
+
     function getPublicUrl(token) {
       const safe = encodeURIComponent(token || '');
       return `${location.origin}${location.pathname.replace(/[^/]+$/, '')}${PUBLIC_BASE}?token=${safe}`;
@@ -1040,6 +1083,7 @@
       document.getElementById('fPublished').value = 'true';
       document.getElementById('fToken').value = '';
       setApplicationFieldControls(getDefaultApplicationFields());
+      setEditPolicyControls(getDefaultEditPolicy());
       setQuestionList([]);
     }
 
@@ -1161,6 +1205,7 @@
         return;
       }
       const applicationFields = collectApplicationFieldSettings();
+      const editPolicy = collectEditPolicy();
 
       const payload = {
         title,
@@ -1172,6 +1217,7 @@
           fee: outlineFee,
           target: outlineTarget,
           application_fields: applicationFields,
+          edit_policy: editPolicy,
         },
         program_json: programLines,
         public_token: token,
@@ -1215,6 +1261,7 @@
       document.getElementById('fOutlineFee').value = outline.fee || '';
       document.getElementById('fOutlineTarget').value = outline.target || '';
       setApplicationFieldControls(outline.application_fields);
+      setEditPolicyControls(outline.edit_policy);
       document.getElementById('fProgramLines').value = program.join('\n');
       document.getElementById('fPublished').value = form.is_published ? 'true' : 'false';
       document.getElementById('fToken').value = form.public_token || '';

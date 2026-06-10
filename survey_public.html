@@ -380,6 +380,10 @@
     const submitBtn = document.getElementById('submitBtn');
 
     let currentForm = null;
+    let currentEditToken = '';
+    let isEditMode = false;
+    let editDeadlineAt = null;
+    let currentEditPolicy = { days_before_event: 3, max_edits: -1 };
     let currentApplicationFields = {
       name: { visible: true, required: true },
       email: { visible: true, required: true },
@@ -398,6 +402,23 @@
       return (params.get('token') || '').trim();
     }
 
+    function getEditToken() {
+      const params = new URLSearchParams(location.search);
+      return (params.get('edit') || '').trim();
+    }
+
+    function generateEditToken() {
+      if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+      return `ed-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+    }
+
+    function getEditUrl(formToken, editToken) {
+      const u = new URL(location.href);
+      u.searchParams.set('token', formToken || getToken());
+      u.searchParams.set('edit', editToken);
+      return u.toString();
+    }
+
     function parseQuestions(raw) {
       if (Array.isArray(raw)) return raw;
       if (!raw) return [];
@@ -411,14 +432,37 @@
 
     function parseOutline(raw) {
       if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-        return { date: '', venue: '', fee: '', target: '' };
+        return { date: '', venue: '', fee: '', target: '', application_fields: null, edit_policy: null };
       }
       return {
         date: String(raw.date || '').trim(),
         venue: String(raw.venue || '').trim(),
         fee: String(raw.fee || '').trim(),
         target: String(raw.target || '').trim(),
+        application_fields: raw.application_fields,
+        edit_policy: raw.edit_policy,
       };
+    }
+
+    function normalizeEditPolicy(raw) {
+      const source = raw && typeof raw === 'object' ? raw : {};
+      let days = Number(source.days_before_event);
+      let max = Number(source.max_edits);
+      if (!Number.isFinite(days)) days = 3;
+      if (!Number.isFinite(max)) max = -1;
+      days = Math.max(0, Math.floor(days));
+      max = Math.floor(max);
+      if (max < -1) max = -1;
+      return {
+        days_before_event: days,
+        max_edits: max,
+      };
+    }
+
+    function formatEditLimit(policy) {
+      if (!policy || policy.max_edits === 0) return '修正不可';
+      if (policy.max_edits < 0) return '回数無制限';
+      return `${policy.max_edits}回まで`;
     }
 
     function parseProgram(raw) {
@@ -494,7 +538,7 @@
       return !!(EMAILJS_PUBLIC_KEY && EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && window.emailjs);
     }
 
-    async function sendConfirmationMail(toEmail, toName, formTitle) {
+    async function sendConfirmationMail(toEmail, toName, formTitle, editUrl = '', editDeadline = '開催日の3日前まで', editLimit = '回数無制限') {
       if (!emailSendEnabled()) {
         return { sent: false, skipped: true };
       }
@@ -506,6 +550,9 @@
           form_title: formTitle || 'アンケート',
           submitted_at: new Date().toLocaleString('ja-JP'),
           form_url: location.href,
+          edit_url: editUrl,
+          edit_deadline: editDeadline,
+          edit_limit: editLimit,
         });
         return { sent: true, skipped: false };
       } catch (error) {
@@ -556,6 +603,54 @@
       });
     }
 
+    function fillAnswers(questions, answers) {
+      const data = answers && typeof answers === 'object' ? answers : {};
+      questions.forEach((q, index) => {
+        const id = q.id || ('q' + index);
+        const value = data[id] == null ? '' : String(data[id]);
+        if (q.type === 'radio') {
+          const target = document.querySelector(`input[name="radio_${id}"][value="${value.replace(/"/g, '\\"')}"]`);
+          if (target) target.checked = true;
+          return;
+        }
+        const input = document.querySelector(`[data-qid="${id}"]`);
+        if (input) input.value = value;
+      });
+    }
+
+    async function loadEditableResponse() {
+      if (!currentEditToken) return;
+      const { data, error } = await db.rpc('survey_get_response_for_edit', {
+        p_edit_token: currentEditToken,
+      });
+      if (error) {
+        showStatus('修正情報の取得に失敗しました。', false);
+        return;
+      }
+      const row = Array.isArray(data) ? data[0] : null;
+      if (!row || !row.can_edit) {
+        showStatus(row?.reason || 'この修正リンクは利用できません。', false);
+        return;
+      }
+      isEditMode = true;
+      editDeadlineAt = row.deadline_at || null;
+      document.getElementById('respondentName').value = row.respondent_name || '';
+      document.getElementById('respondentEmail').value = row.respondent_email || '';
+      const app = row.client_meta?.application || {};
+      document.getElementById('respondentPhone').value = app.phone || '';
+      document.getElementById('respondentCompany').value = app.company || '';
+      document.getElementById('respondentNote').value = app.note || '';
+      fillAnswers(parseQuestions(currentForm.questions_json), row.answers_json || {});
+      submitBtn.textContent = '修正を保存する';
+
+      if (editDeadlineAt) {
+        const deadlineText = new Date(editDeadlineAt).toLocaleString('ja-JP');
+        showStatus(`修正モードです。修正期限: ${deadlineText}`, true);
+      } else {
+        showStatus('修正モードです。', true);
+      }
+    }
+
     function collectAnswers(questions) {
       const answers = {};
       for (const q of questions) {
@@ -578,6 +673,7 @@
 
     async function loadForm() {
       const token = getToken();
+      currentEditToken = getEditToken();
       if (!token) {
         titleEl.textContent = 'アンケートが指定されていません';
         introEl.textContent = 'URLに token パラメータが必要です。';
@@ -606,6 +702,7 @@
       const questions = parseQuestions(data.questions_json);
       const outline = parseOutline(data.outline_json);
       const program = parseProgram(data.program_json);
+      currentEditPolicy = normalizeEditPolicy(outline.edit_policy);
       applyApplicationFields(outline.application_fields);
       if (!questions.length) {
         titleEl.textContent = data.title || 'アンケート';
@@ -619,6 +716,7 @@
       renderProgram(program);
       renderQuestions(questions);
       formEl.style.display = 'block';
+      await loadEditableResponse();
     }
 
     formEl.addEventListener('submit', async (event) => {
@@ -703,33 +801,70 @@
         },
       };
 
-      const { error } = await db.from('survey_responses').insert([payload]);
+      let ok = true;
+      let message = 'ご回答ありがとうございました。送信を受け付けました。';
 
-      submitBtn.disabled = false;
-      submitBtn.textContent = '送信する';
+      if (isEditMode && currentEditToken) {
+        const { data, error } = await db.rpc('survey_update_response_by_token', {
+          p_edit_token: currentEditToken,
+          p_respondent_name: payload.respondent_name,
+          p_respondent_email: payload.respondent_email,
+          p_answers_json: payload.answers_json,
+          p_client_meta: payload.client_meta,
+        });
 
-      if (error) {
-        if ((error.message || '').toLowerCase().includes('permission denied')) {
-          showStatus('送信権限エラーです。管理者に「survey_setup.sql の再実行」を依頼してください。', false);
+        submitBtn.disabled = false;
+        submitBtn.textContent = '修正を保存する';
+
+        if (error) {
+          showStatus('修正に失敗しました: ' + error.message, false);
           return;
         }
-        showStatus('送信に失敗しました: ' + error.message, false);
-        return;
-      }
-
-      let message = 'ご回答ありがとうございました。送信を受け付けました。';
-      let ok = true;
-      if (payload.respondent_email && isValidEmail(payload.respondent_email)) {
-        const mailResult = await sendConfirmationMail(payload.respondent_email, payload.respondent_name, currentForm.title);
-        if (mailResult.sent) {
-          message = 'ご回答ありがとうございました。受付メールを送信しました。';
-        } else if (!mailResult.skipped) {
-          message = '回答は保存されましたが、確認メールの送信に失敗しました。';
-          ok = false;
+        const row = Array.isArray(data) ? data[0] : null;
+        if (!row?.success) {
+          showStatus(row?.message || '修正に失敗しました。', false);
+          return;
         }
+        message = '回答内容を修正しました。';
+      } else {
+        payload.edit_token = generateEditToken();
+        const { error } = await db.from('survey_responses').insert([payload]);
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = '送信する';
+
+        if (error) {
+          if ((error.message || '').toLowerCase().includes('permission denied')) {
+            showStatus('送信権限エラーです。管理者に「survey_setup.sql の再実行」を依頼してください。', false);
+            return;
+          }
+          showStatus('送信に失敗しました: ' + error.message, false);
+          return;
+        }
+
+        if (payload.respondent_email && isValidEmail(payload.respondent_email)) {
+          const canEdit = currentEditPolicy.max_edits !== 0;
+          const editUrl = canEdit ? getEditUrl(getToken(), payload.edit_token) : '';
+          const editDeadline = `開催日の${currentEditPolicy.days_before_event}日前まで`;
+          const editLimit = formatEditLimit(currentEditPolicy);
+          const mailResult = await sendConfirmationMail(
+            payload.respondent_email,
+            payload.respondent_name,
+            currentForm.title,
+            editUrl,
+            editDeadline,
+            editLimit
+          );
+          if (mailResult.sent) {
+            message = 'ご回答ありがとうございました。受付メールを送信しました。';
+          } else if (!mailResult.skipped) {
+            message = '回答は保存されましたが、確認メールの送信に失敗しました。';
+            ok = false;
+          }
+        }
+        formEl.reset();
       }
 
-      formEl.reset();
       showStatus(message, ok);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
