@@ -625,23 +625,58 @@
       }
     }
 
+    function readSupabaseStoredSession() {
+      try {
+        const raw = localStorage.getItem('sb-vspmaejoftjvooohfqbu-auth-token');
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (parsed?.access_token && parsed?.refresh_token) return parsed;
+        if (parsed?.currentSession?.access_token && parsed?.currentSession?.refresh_token) return parsed.currentSession;
+        if (Array.isArray(parsed) && parsed[0]?.access_token && parsed[0]?.refresh_token) return parsed[0];
+        return null;
+      } catch (_) {
+        return null;
+      }
+    }
+
     async function restoreSharedSessionIfNeeded() {
       if (currentSession?.user) return currentSession;
-      const shared = readSharedSession();
-      if (!shared) return null;
-      const { data, error } = await db.auth.setSession({
-        access_token: shared.access_token,
-        refresh_token: shared.refresh_token,
-      });
-      if (error) return null;
+      const candidates = [readSharedSession(), readSupabaseStoredSession()].filter(Boolean);
+      for (const candidate of candidates) {
+        const { data, error } = await db.auth.setSession({
+          access_token: candidate.access_token,
+          refresh_token: candidate.refresh_token,
+        });
+        if (!error && data?.session) {
+          currentSession = data.session;
+          return currentSession;
+        }
+      }
+      return null;
+    }
+
+    async function syncAuthAndLoad(showFeedback = false) {
+      const { data } = await db.auth.getSession();
       currentSession = data.session || null;
-      return currentSession;
+      if (!currentSession) {
+        await restoreSharedSessionIfNeeded();
+      }
+      setAuthUi(!!currentSession, currentSession?.user?.email ? `ログイン中: ${currentSession.user.email}` : '案件管理画面でログインした状態で利用してください。');
+      if (currentSession) {
+        await loadForms();
+        if (showFeedback) showToast('ログイン状態を同期しました。');
+        return true;
+      }
+      if (showFeedback) {
+        showToast('ログイン状態を同期できませんでした。案件管理画面で再ログイン後、再同期してください。');
+      }
+      return false;
     }
 
     function setAuthUi(isAuthed, message = '') {
       authStatus.textContent = message || (isAuthed ? '案件管理画面のログインセッションを使用中です。' : '案件管理画面でログインした状態で利用してください。');
       document.getElementById('newFormBtn').disabled = !isAuthed;
-      document.getElementById('reloadBtn').disabled = !isAuthed;
+      document.getElementById('reloadBtn').disabled = false;
       searchInput.disabled = !isAuthed;
       if (!isAuthed) {
         forms = [];
@@ -1101,7 +1136,6 @@
       }
     };
 
-    window.deleteForm = async function (id) {
     window.softDeleteForm = async function (id) {
       if (!requireAuth()) return;
       if (!(await ensureValidSession())) return;
@@ -1191,7 +1225,9 @@
       resetFormModal();
       openFormModal(true);
     });
-    document.getElementById('reloadBtn').addEventListener('click', loadForms);
+    document.getElementById('reloadBtn').addEventListener('click', () => {
+      syncAuthAndLoad(true);
+    });
     document.getElementById('searchInput').addEventListener('input', renderRows);
     document.getElementById('addQuestionBtn').addEventListener('click', () => {
       questionsWrap.insertAdjacentHTML('beforeend', questionTemplate());
@@ -1207,16 +1243,9 @@
     responseModalOverlay.addEventListener('click', (event) => {
       if (event.target === responseModalOverlay) responseModalOverlay.classList.remove('open');
     });
-    db.auth.getSession().then(async ({ data }) => {
-      currentSession = data.session || null;
-      if (!currentSession) {
-        await restoreSharedSessionIfNeeded();
-      }
+    db.auth.getSession().then(async () => {
       authReady = true;
-      setAuthUi(!!currentSession, currentSession?.user?.email ? `ログイン中: ${currentSession.user.email}` : '案件管理画面でログインした状態で利用してください。');
-      if (currentSession) {
-        loadForms();
-      }
+      await syncAuthAndLoad(false);
     });
 
     db.auth.onAuthStateChange((_event, session) => {
