@@ -1,113 +1,141 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>アンケート回答</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@500;700&display=swap');
+
     :root {
-      --primary: #2563eb;
-      --primary-dk: #1d4ed8;
+      --primary: #0f766e;
+      --primary-dk: #0b5f59;
       --surface: #ffffff;
-      --bg: #eff6ff;
-      --border: #e2e8f0;
-      --text: #1e293b;
-      --sub: #64748b;
+      --surface-sub: #fcfdfd;
+      --bg: #f3f6f7;
+      --bg-ornament: #e8efe8;
+      --border: #d9e2de;
+      --text: #1f2a33;
+      --sub: #5f6f7d;
       --danger: #dc2626;
       --ok: #16a34a;
     }
+
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
-      background: linear-gradient(180deg, var(--bg) 0%, #f8fafc 100%);
+      font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      background:
+        radial-gradient(circle at 8% 10%, var(--bg-ornament) 0, transparent 34%),
+        radial-gradient(circle at 92% 5%, #f0e8dd 0, transparent 30%),
+        linear-gradient(180deg, var(--bg) 0%, #f7faf9 100%);
       color: var(--text);
       min-height: 100vh;
     }
+
     .wrap {
-      max-width: 820px;
+      max-width: 920px;
       margin: 0 auto;
-      padding: 28px 16px 40px;
+      padding: 30px 16px 52px;
     }
-    .hero {
-      margin-bottom: 16px;
-      padding: 18px 20px;
-      border-radius: 18px;
-      background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 54%, #60a5fa 100%);
-      color: #fff;
-      box-shadow: 0 18px 36px rgba(37, 99, 235, .2);
-    }
-    .hero h1 {
-      color: #fff;
-    }
-    .hero .sub {
-      color: rgba(255,255,255,.88);
-      margin-bottom: 0;
-    }
-    .card {
+
+    .tile {
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: 14px;
       background: var(--surface);
-      padding: 20px;
-      box-shadow: 0 12px 30px rgba(15, 23, 42, .08);
+      padding: 16px 18px;
+      box-shadow: 0 8px 22px rgba(18, 39, 31, .06);
+      margin-top: 12px;
     }
+
+    .hero {
+      border-radius: 16px;
+      background:
+        radial-gradient(circle at 95% -10%, #f7e7c4 0 30%, transparent 31%),
+        linear-gradient(160deg, #fdfcf8 0%, #f8f7f1 100%);
+      border: 1px solid #e4ddcc;
+      margin-top: 0;
+      padding: 18px 20px;
+    }
+
+    .tile-title {
+      margin: 0 0 8px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #375065;
+      letter-spacing: .02em;
+    }
+
     h1 {
       margin: 0;
+      font-family: "Noto Serif JP", "Hiragino Mincho ProN", serif;
       font-size: 28px;
       line-height: 1.3;
+      letter-spacing: .02em;
     }
+
     .sub {
       color: var(--sub);
-      margin-top: 8px;
-      margin-bottom: 16px;
+      margin: 8px 0 0;
       font-size: 14px;
-      line-height: 1.6;
+      line-height: 1.65;
       white-space: pre-wrap;
     }
+
+    .outline-grid {
+      display: grid;
+      grid-template-columns: 98px 1fr;
+      gap: 8px 12px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .outline-grid dt {
+      color: #60717f;
+      font-weight: 700;
+    }
+
+    .outline-grid dd {
+      margin: 0;
+      color: var(--text);
+    }
+
+    .program-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--text);
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
     .field {
       display: flex;
       flex-direction: column;
       gap: 6px;
       margin-bottom: 14px;
     }
-    .question-card {
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: #f8fafc;
-      padding: 14px;
-      margin-top: 14px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
-    }
-    .question-card .field {
-      margin-bottom: 0;
-    }
-    .question-card .label-line {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 8px;
-      flex-wrap: wrap;
-    }
-    .question-card .label-line label {
-      font-size: 14px;
-    }
-    .question-description {
-      margin: -2px 0 8px;
-      color: var(--sub);
-      font-size: 12px;
-      line-height: 1.55;
-      white-space: pre-wrap;
-    }
+
     label {
       font-size: 13px;
       font-weight: 700;
     }
+
     .req {
       color: var(--danger);
       font-size: 12px;
       margin-left: 4px;
     }
+
     input[type="text"], textarea, select {
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -117,21 +145,55 @@
       outline: none;
       background: #fff;
     }
+
     input[type="text"]:focus,
     textarea:focus,
     select:focus {
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(37, 99, 235, .14);
     }
+
     textarea {
       min-height: 120px;
       resize: vertical;
     }
+
+    .question-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface-sub);
+      padding: 14px;
+      margin-top: 14px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+    }
+
+    .question-card .label-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .question-card .label-line label {
+      font-size: 14px;
+    }
+
+    .question-description {
+      margin: -2px 0 8px;
+      color: var(--sub);
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
     .radio-group {
       display: flex;
       flex-direction: column;
       gap: 8px;
     }
+
     .radio-item {
       display: flex;
       gap: 8px;
@@ -141,21 +203,20 @@
       padding: 9px 10px;
       background: #fff;
     }
-    .radio-item:hover {
-      border-color: #bfdbfe;
-      background: #eff6ff;
-    }
+
     .helper {
       color: var(--sub);
       font-size: 12px;
       line-height: 1.5;
     }
+
     .actions {
-      margin-top: 18px;
+      margin-top: 4px;
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
     }
+
     .btn {
       border: none;
       border-radius: 10px;
@@ -164,59 +225,122 @@
       font-weight: 700;
       cursor: pointer;
     }
+
     .btn-primary {
       background: var(--primary);
       color: #fff;
     }
-    .btn-primary:hover { background: var(--primary-dk); }
+
+    .btn-primary:hover {
+      background: var(--primary-dk);
+    }
+
+    .small-note {
+      color: var(--sub);
+      font-size: 12px;
+      line-height: 1.6;
+      margin: 8px 0 0;
+    }
+
     .msg {
-      margin-top: 14px;
       border-radius: 10px;
       padding: 10px 12px;
       font-size: 14px;
       display: none;
     }
+
     .msg.show { display: block; }
+
     .msg.ok {
       border: 1px solid #bbf7d0;
       background: #f0fdf4;
       color: #166534;
     }
+
     .msg.ng {
       border: 1px solid #fecaca;
       background: #fef2f2;
       color: #991b1b;
     }
+
+    @media (min-width: 840px) {
+      .split { grid-template-columns: 1fr 1fr; }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="hero">
+    <section class="tile hero">
+      <p class="tile-title">タイトルタイル</p>
       <h1 id="formTitle">アンケート</h1>
-      <p class="sub" id="formIntro">読み込み中...</p>
-    </div>
+    </section>
 
-    <div class="card">
-      <div class="helper">回答は自動保存されません。送信ボタンを押すと1件として登録されます。</div>
-      <form id="surveyAnswerForm" style="display:none;">
-        <div class="field">
-          <label for="respondentName">お名前（任意）</label>
-          <input id="respondentName" type="text" placeholder="例: 山本 太郎" />
-        </div>
-        <div class="field">
-          <label for="respondentEmail">メールアドレス（任意）</label>
-          <input id="respondentEmail" type="text" placeholder="例: user@example.com" />
-          <div class="helper">入力された場合のみ、回答受付メールを送信します。</div>
-        </div>
-        <div id="dynamicQuestions"></div>
+    <section class="tile">
+      <p class="tile-title">ご案内文章タイル</p>
+      <p class="sub" id="formIntro">読み込み中...</p>
+    </section>
+
+    <section class="tile">
+      <p class="tile-title">開催要領タイル</p>
+      <dl class="outline-grid">
+        <dt>日程</dt><dd id="outlineDate">アンケート案内文に応じてご確認ください。</dd>
+        <dt>会場</dt><dd id="outlineVenue">オンラインまたは指定会場</dd>
+        <dt>参加費</dt><dd id="outlineFee">無料</dd>
+        <dt>対象</dt><dd id="outlineTarget">関係者のみなさま</dd>
+      </dl>
+    </section>
+
+    <section class="tile">
+      <p class="tile-title">プログラムタイル</p>
+      <ul class="program-list" id="programList">
+        <li>ご挨拶・趣旨説明</li>
+        <li>関連トピックの共有</li>
+        <li>質疑応答</li>
+      </ul>
+    </section>
+
+    <form id="surveyAnswerForm" style="display:none;">
+      <div class="split">
+        <section class="tile">
+          <p class="tile-title">お申し込みフォーム</p>
+          <div class="field">
+            <label for="respondentName">氏名 <span class="req">必須</span></label>
+            <input id="respondentName" type="text" placeholder="例: 山本 太郎" required />
+          </div>
+          <div class="field">
+            <label for="respondentEmail">メールアドレス <span class="req">必須</span></label>
+            <input id="respondentEmail" type="text" placeholder="例: user@example.com" required />
+            <div class="helper">回答受付後、このメールアドレスに確認メールを送信します。</div>
+          </div>
+          <div class="field">
+            <label for="respondentPhone">電話番号</label>
+            <input id="respondentPhone" type="text" placeholder="例: 090-1234-5678" />
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="respondentCompany">会社名・所属</label>
+            <input id="respondentCompany" type="text" placeholder="例: 株式会社〇〇 / 営業部" />
+          </div>
+        </section>
+
+        <section class="tile">
+          <p class="tile-title">アンケート質問タイル</p>
+          <div class="helper">アンケート回答フォーム</div>
+          <div id="dynamicQuestions"></div>
+        </section>
+      </div>
+
+      <section class="tile">
         <input id="hpField" type="text" style="display:none" autocomplete="off" tabindex="-1" />
         <div class="actions">
           <button class="btn btn-primary" id="submitBtn" type="submit">送信する</button>
         </div>
-      </form>
+        <p class="small-note">回答は自動保存されません。送信ボタンを押すと1件として登録されます。</p>
+      </section>
+    </form>
 
+    <section class="tile">
       <div class="msg" id="statusMsg"></div>
-    </div>
+    </section>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -236,6 +360,11 @@
     const formEl = document.getElementById('surveyAnswerForm');
     const titleEl = document.getElementById('formTitle');
     const introEl = document.getElementById('formIntro');
+    const outlineDateEl = document.getElementById('outlineDate');
+    const outlineVenueEl = document.getElementById('outlineVenue');
+    const outlineFeeEl = document.getElementById('outlineFee');
+    const outlineTargetEl = document.getElementById('outlineTarget');
+    const programListEl = document.getElementById('programList');
     const questionsEl = document.getElementById('dynamicQuestions');
     const statusEl = document.getElementById('statusMsg');
     const submitBtn = document.getElementById('submitBtn');
@@ -261,6 +390,35 @@
       } catch (_) {
         return [];
       }
+    }
+
+    function parseOutline(raw) {
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+        return { date: '', venue: '', fee: '', target: '' };
+      }
+      return {
+        date: String(raw.date || '').trim(),
+        venue: String(raw.venue || '').trim(),
+        fee: String(raw.fee || '').trim(),
+        target: String(raw.target || '').trim(),
+      };
+    }
+
+    function parseProgram(raw) {
+      if (!Array.isArray(raw)) return [];
+      return raw.map(v => String(v || '').trim()).filter(Boolean);
+    }
+
+    function renderOutline(outline) {
+      outlineDateEl.textContent = outline.date || 'アンケート案内文に応じてご確認ください。';
+      outlineVenueEl.textContent = outline.venue || 'オンラインまたは指定会場';
+      outlineFeeEl.textContent = outline.fee || '無料';
+      outlineTargetEl.textContent = outline.target || '関係者のみなさま';
+    }
+
+    function renderProgram(lines) {
+      const list = lines.length ? lines : ['ご挨拶・趣旨説明', '関連トピックの共有', '質疑応答'];
+      programListEl.innerHTML = list.map(line => `<li>${line}</li>`).join('');
     }
 
     function isValidEmail(value) {
@@ -363,7 +521,7 @@
 
       const { data, error } = await db
         .from('survey_forms')
-        .select('id,title,intro_text,is_published,is_deleted,questions_json')
+        .select('id,title,intro_text,is_published,is_deleted,outline_json,program_json,questions_json')
         .eq('public_token', token)
         .maybeSingle();
 
@@ -381,6 +539,8 @@
 
       currentForm = data;
       const questions = parseQuestions(data.questions_json);
+      const outline = parseOutline(data.outline_json);
+      const program = parseProgram(data.program_json);
       if (!questions.length) {
         titleEl.textContent = data.title || 'アンケート';
         introEl.textContent = '設問が設定されていません。管理者に連絡してください。';
@@ -389,6 +549,8 @@
 
       titleEl.textContent = data.title || 'アンケート';
       introEl.textContent = data.intro_text || '以下の設問に回答してください。';
+      renderOutline(outline);
+      renderProgram(program);
       renderQuestions(questions);
       formEl.style.display = 'block';
     }
@@ -422,10 +584,28 @@
           userAgent: navigator.userAgent,
           language: navigator.language,
           submittedFrom: location.href,
+          application: {
+            phone: document.getElementById('respondentPhone').value.trim(),
+            company: document.getElementById('respondentCompany').value.trim(),
+          },
         },
       };
 
-      if (payload.respondent_email && !isValidEmail(payload.respondent_email)) {
+      if (!payload.respondent_name) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '送信する';
+        showStatus('氏名は必須です。', false);
+        return;
+      }
+
+      if (!payload.respondent_email) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '送信する';
+        showStatus('メールアドレスは必須です。', false);
+        return;
+      }
+
+      if (!isValidEmail(payload.respondent_email)) {
         submitBtn.disabled = false;
         submitBtn.textContent = '送信する';
         showStatus('メールアドレス形式が正しくありません。', false);
@@ -446,17 +626,14 @@
         return;
       }
 
-      const respondentEmail = payload.respondent_email;
       let message = 'ご回答ありがとうございました。送信を受け付けました。';
       let ok = true;
-      if (respondentEmail) {
-        const mailResult = await sendConfirmationMail(respondentEmail, payload.respondent_name, currentForm.title);
-        if (mailResult.sent) {
-          message = 'ご回答ありがとうございました。受付メールを送信しました。';
-        } else if (!mailResult.skipped) {
-          message = '回答は保存されましたが、確認メールの送信に失敗しました。';
-          ok = false;
-        }
+      const mailResult = await sendConfirmationMail(payload.respondent_email, payload.respondent_name, currentForm.title);
+      if (mailResult.sent) {
+        message = 'ご回答ありがとうございました。受付メールを送信しました。';
+      } else if (!mailResult.skipped) {
+        message = '回答は保存されましたが、確認メールの送信に失敗しました。';
+        ok = false;
       }
 
       formEl.reset();

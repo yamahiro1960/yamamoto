@@ -497,6 +497,30 @@
         </div>
         <div class="row">
           <div class="field">
+            <label for="fOutlineDate">開催日程</label>
+            <input id="fOutlineDate" type="text" placeholder="例: 2026年07月02日(木) 13:30-15:30" />
+          </div>
+          <div class="field">
+            <label for="fOutlineVenue">会場</label>
+            <input id="fOutlineVenue" type="text" placeholder="例: 南国市立図書館 3F会議室" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="fOutlineFee">参加費</label>
+            <input id="fOutlineFee" type="text" placeholder="例: 無料" />
+          </div>
+          <div class="field">
+            <label for="fOutlineTarget">対象</label>
+            <input id="fOutlineTarget" type="text" placeholder="例: 関係者のみなさま" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="fProgramLines">プログラム（1行に1項目）</label>
+          <textarea id="fProgramLines" placeholder="ご挨拶・趣旨説明&#10;関連トピックの共有&#10;質疑応答"></textarea>
+        </div>
+        <div class="row">
+          <div class="field">
             <label for="fPublished">公開状態</label>
             <select id="fPublished">
               <option value="true">公開</option>
@@ -639,6 +663,16 @@
       } catch (_) {
         return [];
       }
+    }
+
+    function parseObject(raw, fallback = {}) {
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return fallback;
+      return raw;
+    }
+
+    function parseStringList(raw, fallback = []) {
+      if (Array.isArray(raw)) return raw.map(v => String(v || '').trim()).filter(Boolean);
+      return fallback;
     }
 
     function getPublicUrl(token) {
@@ -829,6 +863,11 @@
       editingId = null;
       document.getElementById('fTitle').value = '';
       document.getElementById('fIntro').value = '';
+      document.getElementById('fOutlineDate').value = '';
+      document.getElementById('fOutlineVenue').value = '';
+      document.getElementById('fOutlineFee').value = '';
+      document.getElementById('fOutlineTarget').value = '';
+      document.getElementById('fProgramLines').value = '';
       document.getElementById('fPublished').value = 'true';
       document.getElementById('fToken').value = '';
       setQuestionList([]);
@@ -839,7 +878,7 @@
       if (!(await ensureValidSession())) return;
       const { data, error } = await db
         .from('survey_forms')
-        .select('id,title,intro_text,is_published,is_deleted,deleted_at,public_token,questions_json,created_at')
+        .select('id,title,intro_text,is_published,is_deleted,deleted_at,outline_json,program_json,public_token,questions_json,created_at')
         .order('id', { ascending: false });
       if (error) {
         showToast('アンケート読込に失敗: ' + error.message);
@@ -916,6 +955,14 @@
       if (!(await ensureValidSession())) return;
       const title = document.getElementById('fTitle').value.trim();
       const intro = document.getElementById('fIntro').value.trim();
+      const outlineDate = document.getElementById('fOutlineDate').value.trim();
+      const outlineVenue = document.getElementById('fOutlineVenue').value.trim();
+      const outlineFee = document.getElementById('fOutlineFee').value.trim();
+      const outlineTarget = document.getElementById('fOutlineTarget').value.trim();
+      const programLines = document.getElementById('fProgramLines').value
+        .split('\n')
+        .map(v => v.trim())
+        .filter(Boolean);
       const isPublished = document.getElementById('fPublished').value === 'true';
       const rawToken = document.getElementById('fToken').value.trim();
       let token = rawToken.toLowerCase();
@@ -948,6 +995,13 @@
         title,
         intro_text: intro,
         is_published: isPublished,
+        outline_json: {
+          date: outlineDate,
+          venue: outlineVenue,
+          fee: outlineFee,
+          target: outlineTarget,
+        },
+        program_json: programLines,
         public_token: token,
         questions_json: picked.questions,
         updated_at: new Date().toISOString(),
@@ -982,6 +1036,13 @@
       editingId = id;
       document.getElementById('fTitle').value = form.title || '';
       document.getElementById('fIntro').value = form.intro_text || '';
+      const outline = parseObject(form.outline_json, {});
+      const program = parseStringList(form.program_json, []);
+      document.getElementById('fOutlineDate').value = outline.date || '';
+      document.getElementById('fOutlineVenue').value = outline.venue || '';
+      document.getElementById('fOutlineFee').value = outline.fee || '';
+      document.getElementById('fOutlineTarget').value = outline.target || '';
+      document.getElementById('fProgramLines').value = program.join('\n');
       document.getElementById('fPublished').value = form.is_published ? 'true' : 'false';
       document.getElementById('fToken').value = form.public_token || '';
       setQuestionList(parseQuestions(form.questions_json));

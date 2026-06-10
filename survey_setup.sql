@@ -10,6 +10,8 @@ create table if not exists public.survey_forms (
   is_published boolean not null default true,
   is_deleted boolean not null default false,
   deleted_at timestamptz,
+  outline_json jsonb not null default '{}'::jsonb,
+  program_json jsonb not null default '[]'::jsonb,
   public_token text not null unique,
   questions_json jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
@@ -18,6 +20,8 @@ create table if not exists public.survey_forms (
 
 alter table public.survey_forms add column if not exists is_deleted boolean not null default false;
 alter table public.survey_forms add column if not exists deleted_at timestamptz;
+alter table public.survey_forms add column if not exists outline_json jsonb not null default '{}'::jsonb;
+alter table public.survey_forms add column if not exists program_json jsonb not null default '[]'::jsonb;
 
 create table if not exists public.survey_responses (
   id bigserial primary key,
@@ -119,3 +123,39 @@ on public.survey_responses
 for delete
 to anon
 using (false);
+
+-- Optional seed data for quick UI verification
+-- Run only when you want to create one sample form.
+insert into public.survey_forms (
+  title,
+  intro_text,
+  is_published,
+  is_deleted,
+  public_token,
+  outline_json,
+  program_json,
+  questions_json
+)
+values (
+  '駆動型ホームページ作成を内製化するための勉強会',
+  '平素より弊社の活動をご支援いただき誠にありがとうございます。今回、駆動型ホームページ内製化に関する勉強会を開催いたします。',
+  true,
+  false,
+  'event-study-20260702',
+  '{"date":"2026年7月2日(木) 13:30-15:30","venue":"南国市立図書館 3F会議室","fee":"無料","target":"関係者・参加希望者のみなさま"}'::jsonb,
+  '["導入背景の共有","内製化ポイント（メンテナンス）","成功事例とこれまでにできること","AIエージェント活用デモ","質疑応答と次回アクションの確認"]'::jsonb,
+  '[
+    {"id":"q1","label":"今回の内容は分かりやすかったですか？","description":"当てはまるものを選択してください。","type":"radio","required":true,"options":["とても分かりやすい","分かりやすい","普通","やや難しい","難しい"]},
+    {"id":"q2","label":"今後取り上げてほしいテーマ","description":"自由記述でご記入ください。","type":"textarea","required":false,"options":[]}
+  ]'::jsonb
+)
+on conflict (public_token) do update
+set
+  title = excluded.title,
+  intro_text = excluded.intro_text,
+  is_published = excluded.is_published,
+  is_deleted = excluded.is_deleted,
+  outline_json = excluded.outline_json,
+  program_json = excluded.program_json,
+  questions_json = excluded.questions_json,
+  updated_at = now();
