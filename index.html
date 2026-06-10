@@ -109,7 +109,8 @@
 
     /* ===== Header ===== */
     .header {
-      height: var(--header-h);
+      min-height: var(--header-h);
+      height: auto;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
       display: flex;
@@ -117,9 +118,11 @@
       justify-content: space-between;
       padding: 0 28px;
       position: sticky; top: 0; z-index: 50;
+      gap: 12px;
+      flex-wrap: wrap;
     }
     .header-title { font-size: 18px; font-weight: 700; }
-    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .header-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
     .auth-panel {
       display: flex;
       align-items: center;
@@ -754,7 +757,33 @@
       .timeline-layout { grid-template-columns: 1fr; }
     }
     @media (max-width: 768px) {
-      .header { padding: 0 12px; }
+      .header {
+        padding: 10px 12px;
+        align-items: flex-start;
+      }
+      .header-title {
+        width: 100%;
+      }
+      .header-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+      .auth-panel {
+        width: 100%;
+      }
+      .auth-panel input {
+        width: 100%;
+      }
+      .toolbar {
+        padding: 12px;
+      }
+      .layout-switch {
+        margin-left: 0;
+        width: 100%;
+      }
+      .view-switch {
+        width: 100%;
+      }
     }
 
     /* ===== Scrollbar ===== */
