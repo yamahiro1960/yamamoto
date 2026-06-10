@@ -1138,6 +1138,7 @@
   const { createClient } = supabase;
   const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const PHOTO_BUCKET = 'case-photos';
+  const SHARED_SESSION_KEY = 'yamamoto_shared_session_v1';
 
   // ===== State =====
   let cases = [];
@@ -1476,6 +1477,21 @@
     };
   }
 
+  function persistSharedSession(session) {
+    try {
+      if (session?.access_token && session?.refresh_token) {
+        localStorage.setItem(SHARED_SESSION_KEY, JSON.stringify({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        }));
+      } else {
+        localStorage.removeItem(SHARED_SESSION_KEY);
+      }
+    } catch (_) {
+      // ignore storage failures (private mode, quota)
+    }
+  }
+
   function updateAuthUi() {
     const isAuthed = !!currentSession?.user;
     document.getElementById('loginEmail').classList.toggle('hidden-auth', isAuthed);
@@ -1512,6 +1528,7 @@
       return;
     }
     currentSession = data.session || null;
+    persistSharedSession(currentSession);
     updateAuthUi();
     showToast('✅', 'ログインしました');
   }
@@ -1523,6 +1540,7 @@
       return;
     }
     currentSession = null;
+    persistSharedSession(null);
     updateAuthUi();
     showToast('✅', 'ログアウトしました');
   }
@@ -2157,10 +2175,12 @@
   // ===== Init =====
   db.auth.getSession().then(({ data }) => {
     currentSession = data.session || null;
+    persistSharedSession(currentSession);
     updateAuthUi();
   });
   db.auth.onAuthStateChange((_event, session) => {
     currentSession = session;
+    persistSharedSession(session);
     updateAuthUi();
   });
   setAuthGateVisible(true);

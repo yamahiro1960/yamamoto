@@ -571,6 +571,7 @@
 
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const SHARED_SESSION_KEY = 'yamamoto_shared_session_v1';
 
     const PUBLIC_BASE = 'survey_public.html';
 
@@ -610,6 +611,31 @@
       t.textContent = msg;
       t.classList.add('show');
       setTimeout(() => t.classList.remove('show'), 2600);
+    }
+
+    function readSharedSession() {
+      try {
+        const raw = localStorage.getItem(SHARED_SESSION_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed?.access_token || !parsed?.refresh_token) return null;
+        return parsed;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    async function restoreSharedSessionIfNeeded() {
+      if (currentSession?.user) return currentSession;
+      const shared = readSharedSession();
+      if (!shared) return null;
+      const { data, error } = await db.auth.setSession({
+        access_token: shared.access_token,
+        refresh_token: shared.refresh_token,
+      });
+      if (error) return null;
+      currentSession = data.session || null;
+      return currentSession;
     }
 
     function setAuthUi(isAuthed, message = '') {
@@ -1181,8 +1207,11 @@
     responseModalOverlay.addEventListener('click', (event) => {
       if (event.target === responseModalOverlay) responseModalOverlay.classList.remove('open');
     });
-    db.auth.getSession().then(({ data }) => {
+    db.auth.getSession().then(async ({ data }) => {
       currentSession = data.session || null;
+      if (!currentSession) {
+        await restoreSharedSessionIfNeeded();
+      }
       authReady = true;
       setAuthUi(!!currentSession, currentSession?.user?.email ? `ログイン中: ${currentSession.user.email}` : '案件管理画面でログインした状態で利用してください。');
       if (currentSession) {
