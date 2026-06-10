@@ -1751,12 +1751,12 @@
   }
 
   function updateKPI() {
-    const activeCases = cases.filter(c => !c.is_deleted);
-    const total = activeCases.length;
-    const inp   = activeCases.filter(c => c.status === '進行中').length;
-    const comp  = activeCases.filter(c => c.status === '完了').length;
-    const pend  = activeCases.filter(c => c.status === '保留').length;
-    const canc  = activeCases.filter(c => c.status === 'キャンセル').length;
+    const base = filtered();
+    const total = base.length;
+    const inp   = base.filter(c => c.status === '進行中').length;
+    const comp  = base.filter(c => c.status === '完了').length;
+    const pend  = base.filter(c => c.status === '保留').length;
+    const canc  = base.filter(c => c.status === 'キャンセル').length;
     const pct = v => total ? Math.round(v / total * 100) : 0;
     document.getElementById('kpiTotal').textContent      = total;
     document.getElementById('kpiInProgress').textContent = inp;
