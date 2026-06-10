@@ -116,6 +116,65 @@
     .table-wrap {
       overflow-x: auto;
     }
+    .tiles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 12px;
+      padding: 14px;
+    }
+    .survey-tile {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+      padding: 14px;
+      box-shadow: 0 6px 14px rgba(30, 41, 59, 0.06);
+      display: grid;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .survey-tile:hover {
+      background: #f8fbff;
+      border-color: #cbd5e1;
+    }
+    .survey-tile.deleted {
+      background: #f8fafc;
+    }
+    .survey-tile-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .survey-tile-title {
+      font-size: 16px;
+      font-weight: 800;
+      margin: 0;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .survey-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      font-size: 12px;
+      color: var(--sub);
+    }
+    .survey-meta-item {
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 8px;
+      background: #f8fafc;
+    }
+    .survey-meta-label {
+      font-size: 11px;
+      color: var(--sub);
+      margin-bottom: 4px;
+    }
+    .survey-meta-value {
+      font-size: 13px;
+      color: var(--text);
+      font-weight: 700;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -365,6 +424,32 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
+    .response-profile {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .response-profile-item {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+    .response-profile-item.full {
+      grid-column: 1 / -1;
+    }
+    .response-profile-label {
+      font-size: 12px;
+      color: var(--sub);
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+    .response-profile-value {
+      font-size: 14px;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
     .field {
       display: flex;
       flex-direction: column;
@@ -479,20 +564,7 @@
         <button class="btn btn-ghost" id="reloadBtn" type="button">再読み込み</button>
       </div>
       <div class="table-wrap" id="tableWrap">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>タイトル</th>
-              <th>公開状態</th>
-              <th>設問数</th>
-              <th>回答件数</th>
-              <th>作成日</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody id="formsBody"></tbody>
-        </table>
+        <div class="tiles-grid" id="formsBody"></div>
       </div>
       <div class="empty" id="emptyBox">アンケートがありません。右上の「新規アンケート作成」から作成してください。</div>
     </div>
@@ -922,40 +994,52 @@
         const publicUrl = getPublicUrl(form.public_token);
         const qrUrl = getQrImageUrl(publicUrl);
         return `
-          <tr class="${isDeleted ? 'row-deleted' : ''} clickable-row" onclick="openResponses(${form.id})" title="クリックで回答一覧を表示">
-            <td>${form.id}</td>
-            <td>
-              <strong>${form.title}</strong><br>
-              <span style="font-size:12px;color:var(--sub)">${form.intro_text || ''}</span>
-              <div class="public-url" onclick="event.stopPropagation()">
-                <span>公開URL:</span>
-                <code class="url-chip">${publicUrl}</code>
-                <button class="mini" type="button" onclick="copyPublicUrl('${publicUrl}')">コピー</button>
-                <a class="qr-link" href="${qrUrl}" target="_blank" rel="noopener noreferrer" title="QRコードを開く">
-                  <img src="${qrUrl}" alt="公開URLのQRコード" loading="lazy" />
-                </a>
-              </div>
-            </td>
-            <td>
+          <article class="survey-tile ${isDeleted ? 'deleted' : ''}" onclick="openResponses(${form.id})" title="クリックで回答一覧を表示">
+            <div class="survey-tile-head">
+              <h3 class="survey-tile-title">${form.title || '無題アンケート'}</h3>
               <span class="badge ${isDeleted ? 'badge-archived' : (published ? 'badge-open' : 'badge-stop')}">
                 ${isDeleted ? '論理削除' : (published ? '公開' : '停止')}
               </span>
-            </td>
-            <td>${questions.length}</td>
-            <td>${count}</td>
-            <td>${fmtDateTime(form.created_at)}</td>
-            <td onclick="event.stopPropagation()">
-              <div class="actions">
-                <button class="mini" onclick="openEdit(${form.id})">編集</button>
-                <a class="mini" href="${publicUrl}" target="_blank" rel="noopener noreferrer">公開ページ</a>
-                <button class="mini" onclick="openResponses(${form.id})">回答一覧</button>
-                ${isDeleted
-                  ? `<button class="mini" onclick="restoreForm(${form.id})">復元</button>`
-                  : `<button class="mini mini-warn" onclick="softDeleteForm(${form.id})">論理削除</button>`}
-                <button class="mini mini-danger" onclick="hardDeleteForm(${form.id})">完全削除</button>
+            </div>
+
+            <div class="survey-meta-grid">
+              <div class="survey-meta-item">
+                <div class="survey-meta-label">ID</div>
+                <div class="survey-meta-value">${form.id}</div>
               </div>
-            </td>
-          </tr>`;
+              <div class="survey-meta-item">
+                <div class="survey-meta-label">設問数</div>
+                <div class="survey-meta-value">${questions.length}件</div>
+              </div>
+              <div class="survey-meta-item">
+                <div class="survey-meta-label">回答件数</div>
+                <div class="survey-meta-value">${count}名</div>
+              </div>
+              <div class="survey-meta-item">
+                <div class="survey-meta-label">作成日</div>
+                <div class="survey-meta-value">${fmtDateTime(form.created_at)}</div>
+              </div>
+            </div>
+
+            <div class="public-url" onclick="event.stopPropagation()">
+              <span>公開URL:</span>
+              <code class="url-chip">${publicUrl}</code>
+              <button class="mini" type="button" onclick="copyPublicUrl('${publicUrl}')">コピー</button>
+              <a class="qr-link" href="${qrUrl}" target="_blank" rel="noopener noreferrer" title="QRコードを開く">
+                <img src="${qrUrl}" alt="公開URLのQRコード" loading="lazy" />
+              </a>
+            </div>
+
+            <div class="actions" onclick="event.stopPropagation()">
+              <button class="mini" onclick="openEdit(${form.id})">編集</button>
+              <a class="mini" href="${publicUrl}" target="_blank" rel="noopener noreferrer">公開ページ</a>
+              <button class="mini" onclick="openResponses(${form.id})">回答一覧</button>
+              ${isDeleted
+                ? `<button class="mini" onclick="restoreForm(${form.id})">復元</button>`
+                : `<button class="mini mini-warn" onclick="softDeleteForm(${form.id})">論理削除</button>`}
+              <button class="mini mini-danger" onclick="hardDeleteForm(${form.id})">完全削除</button>
+            </div>
+          </article>`;
       }).join('');
     }
 
@@ -979,6 +1063,52 @@
         });
       });
       return map;
+    }
+
+    function pickFirstFilled(...values) {
+      for (const value of values) {
+        if (value == null) continue;
+        const text = String(value).trim();
+        if (text) return text;
+      }
+      return '';
+    }
+
+    function getHeadCountFromAnswers(answers = {}) {
+      const entries = Object.entries(answers || {});
+      for (const [key, value] of entries) {
+        const label = String(key || '');
+        if (!/(人数|参加人数|参加者数|人員)/.test(label)) continue;
+        const text = String(value ?? '').trim();
+        if (text) return text;
+      }
+      return '';
+    }
+
+    function getRespondentInfo(item) {
+      const meta = item?.client_meta && typeof item.client_meta === 'object' ? item.client_meta : {};
+      const app = meta.application && typeof meta.application === 'object' ? meta.application : {};
+      const answers = item?.answers_json && typeof item.answers_json === 'object' ? item.answers_json : {};
+
+      const organization = pickFirstFilled(app.company, app.organization, app.org, app.affiliation);
+      const name = pickFirstFilled(item.respondent_name, app.name);
+      const attendees = pickFirstFilled(
+        app.people_count,
+        app.participant_count,
+        app.attendee_count,
+        app.number_of_people,
+        getHeadCountFromAnswers(answers)
+      );
+      const phone = pickFirstFilled(app.phone, app.tel, app.telephone);
+      const note = pickFirstFilled(app.note, app.remarks, app.memo);
+
+      return {
+        organization: organization || '—',
+        name: name || '—',
+        attendees: attendees || '—',
+        phone: phone || '—',
+        note: note || '—',
+      };
     }
 
     function questionTemplate(question = {}) {
@@ -1153,12 +1283,35 @@
 
       responseList.innerHTML = list.map((item, index) => {
         const answers = item.answers_json || {};
+        const profile = getRespondentInfo(item);
         const itemsHtml = Object.entries(answers).map(([questionId, value]) => renderAnswerValue(questionMap, questionId, value)).join('');
         return `
           <div class="response-card">
             <div class="response-head">
               <strong>回答 ${list.length - index}</strong>
-              <span class="response-meta">${fmtDateTime(item.submitted_at)} / ${item.respondent_name || '匿名'}${item.respondent_email ? ` / ${item.respondent_email}` : ''}</span>
+              <span class="response-meta">${fmtDateTime(item.submitted_at)}${item.respondent_email ? ` / ${item.respondent_email}` : ''}</span>
+            </div>
+            <div class="response-profile">
+              <div class="response-profile-item">
+                <div class="response-profile-label">組織</div>
+                <div class="response-profile-value">${profile.organization}</div>
+              </div>
+              <div class="response-profile-item">
+                <div class="response-profile-label">氏名</div>
+                <div class="response-profile-value">${profile.name}</div>
+              </div>
+              <div class="response-profile-item">
+                <div class="response-profile-label">人数</div>
+                <div class="response-profile-value">${profile.attendees}</div>
+              </div>
+              <div class="response-profile-item">
+                <div class="response-profile-label">電話番号</div>
+                <div class="response-profile-value">${profile.phone}</div>
+              </div>
+              <div class="response-profile-item full">
+                <div class="response-profile-label">備考</div>
+                <div class="response-profile-value">${profile.note}</div>
+              </div>
             </div>
             <div class="response-items">
               ${itemsHtml || '<div class="empty" style="margin:0">回答内容がありません。</div>'}
