@@ -139,6 +139,9 @@
     }
     tbody tr:hover { background: #f8fbff; }
     tbody tr:last-child td { border-bottom: none; }
+    tbody tr.clickable-row {
+      cursor: pointer;
+    }
     .badge {
       display: inline-flex;
       align-items: center;
@@ -919,12 +922,12 @@
         const publicUrl = getPublicUrl(form.public_token);
         const qrUrl = getQrImageUrl(publicUrl);
         return `
-          <tr class="${isDeleted ? 'row-deleted' : ''}">
+          <tr class="${isDeleted ? 'row-deleted' : ''} clickable-row" onclick="openResponses(${form.id})" title="クリックで回答一覧を表示">
             <td>${form.id}</td>
             <td>
               <strong>${form.title}</strong><br>
               <span style="font-size:12px;color:var(--sub)">${form.intro_text || ''}</span>
-              <div class="public-url">
+              <div class="public-url" onclick="event.stopPropagation()">
                 <span>公開URL:</span>
                 <code class="url-chip">${publicUrl}</code>
                 <button class="mini" type="button" onclick="copyPublicUrl('${publicUrl}')">コピー</button>
@@ -941,7 +944,7 @@
             <td>${questions.length}</td>
             <td>${count}</td>
             <td>${fmtDateTime(form.created_at)}</td>
-            <td>
+            <td onclick="event.stopPropagation()">
               <div class="actions">
                 <button class="mini" onclick="openEdit(${form.id})">編集</button>
                 <a class="mini" href="${publicUrl}" target="_blank" rel="noopener noreferrer">公開ページ</a>
