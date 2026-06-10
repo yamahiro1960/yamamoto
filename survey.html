@@ -421,6 +421,21 @@
     .question-options.show {
       display: block;
     }
+    .app-field-grid {
+      display: grid;
+      gap: 8px;
+    }
+    .app-field-row {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+    .app-field-row > div:first-child {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
     .modal-foot {
       display: flex;
       justify-content: flex-end;
@@ -518,6 +533,36 @@
         <div class="field">
           <label for="fProgramLines">プログラム（1行に1項目）</label>
           <textarea id="fProgramLines" placeholder="ご挨拶・趣旨説明&#10;関連トピックの共有&#10;質疑応答"></textarea>
+        </div>
+        <div class="field">
+          <label>お申し込みフォーム項目設定</label>
+          <div class="app-field-grid">
+            <div class="app-field-row">
+              <div>氏名</div>
+              <select id="fAppNameRequired"><option value="true">必須</option><option value="false">任意</option></select>
+              <select id="fAppNameVisible"><option value="true">表示</option><option value="false">非表示</option></select>
+            </div>
+            <div class="app-field-row">
+              <div>メールアドレス</div>
+              <select id="fAppEmailRequired"><option value="true">必須</option><option value="false">任意</option></select>
+              <select id="fAppEmailVisible"><option value="true">表示</option><option value="false">非表示</option></select>
+            </div>
+            <div class="app-field-row">
+              <div>電話番号</div>
+              <select id="fAppPhoneRequired"><option value="true">必須</option><option value="false" selected>任意</option></select>
+              <select id="fAppPhoneVisible"><option value="true">表示</option><option value="false">非表示</option></select>
+            </div>
+            <div class="app-field-row">
+              <div>会社名・所属</div>
+              <select id="fAppCompanyRequired"><option value="true">必須</option><option value="false" selected>任意</option></select>
+              <select id="fAppCompanyVisible"><option value="true">表示</option><option value="false">非表示</option></select>
+            </div>
+            <div class="app-field-row">
+              <div>備考</div>
+              <select id="fAppNoteRequired"><option value="true">必須</option><option value="false" selected>任意</option></select>
+              <select id="fAppNoteVisible"><option value="true">表示</option><option value="false">非表示</option></select>
+            </div>
+          </div>
         </div>
         <div class="row">
           <div class="field">
@@ -736,6 +781,69 @@
       return fallback;
     }
 
+    function getDefaultApplicationFields() {
+      return {
+        name: { visible: true, required: true },
+        email: { visible: true, required: true },
+        phone: { visible: true, required: false },
+        company: { visible: true, required: false },
+        note: { visible: true, required: false },
+      };
+    }
+
+    function normalizeApplicationFields(raw) {
+      const defaults = getDefaultApplicationFields();
+      const source = raw && typeof raw === 'object' ? raw : {};
+      const normalized = { ...defaults };
+      Object.keys(defaults).forEach((key) => {
+        const item = source[key] && typeof source[key] === 'object' ? source[key] : {};
+        const visible = item.visible !== false;
+        const required = !!item.required && visible;
+        normalized[key] = { visible, required };
+      });
+      return normalized;
+    }
+
+    function setApplicationFieldControls(raw) {
+      const fields = normalizeApplicationFields(raw);
+      document.getElementById('fAppNameRequired').value = String(fields.name.required);
+      document.getElementById('fAppNameVisible').value = String(fields.name.visible);
+      document.getElementById('fAppEmailRequired').value = String(fields.email.required);
+      document.getElementById('fAppEmailVisible').value = String(fields.email.visible);
+      document.getElementById('fAppPhoneRequired').value = String(fields.phone.required);
+      document.getElementById('fAppPhoneVisible').value = String(fields.phone.visible);
+      document.getElementById('fAppCompanyRequired').value = String(fields.company.required);
+      document.getElementById('fAppCompanyVisible').value = String(fields.company.visible);
+      document.getElementById('fAppNoteRequired').value = String(fields.note.required);
+      document.getElementById('fAppNoteVisible').value = String(fields.note.visible);
+    }
+
+    function collectApplicationFieldSettings() {
+      const raw = {
+        name: {
+          required: document.getElementById('fAppNameRequired').value === 'true',
+          visible: document.getElementById('fAppNameVisible').value === 'true',
+        },
+        email: {
+          required: document.getElementById('fAppEmailRequired').value === 'true',
+          visible: document.getElementById('fAppEmailVisible').value === 'true',
+        },
+        phone: {
+          required: document.getElementById('fAppPhoneRequired').value === 'true',
+          visible: document.getElementById('fAppPhoneVisible').value === 'true',
+        },
+        company: {
+          required: document.getElementById('fAppCompanyRequired').value === 'true',
+          visible: document.getElementById('fAppCompanyVisible').value === 'true',
+        },
+        note: {
+          required: document.getElementById('fAppNoteRequired').value === 'true',
+          visible: document.getElementById('fAppNoteVisible').value === 'true',
+        },
+      };
+      return normalizeApplicationFields(raw);
+    }
+
     function getPublicUrl(token) {
       const safe = encodeURIComponent(token || '');
       return `${location.origin}${location.pathname.replace(/[^/]+$/, '')}${PUBLIC_BASE}?token=${safe}`;
@@ -931,6 +1039,7 @@
       document.getElementById('fProgramLines').value = '';
       document.getElementById('fPublished').value = 'true';
       document.getElementById('fToken').value = '';
+      setApplicationFieldControls(getDefaultApplicationFields());
       setQuestionList([]);
     }
 
@@ -1051,6 +1160,7 @@
         showToast(picked.error);
         return;
       }
+      const applicationFields = collectApplicationFieldSettings();
 
       const payload = {
         title,
@@ -1061,6 +1171,7 @@
           venue: outlineVenue,
           fee: outlineFee,
           target: outlineTarget,
+          application_fields: applicationFields,
         },
         program_json: programLines,
         public_token: token,
@@ -1103,6 +1214,7 @@
       document.getElementById('fOutlineVenue').value = outline.venue || '';
       document.getElementById('fOutlineFee').value = outline.fee || '';
       document.getElementById('fOutlineTarget').value = outline.target || '';
+      setApplicationFieldControls(outline.application_fields);
       document.getElementById('fProgramLines').value = program.join('\n');
       document.getElementById('fPublished').value = form.is_published ? 'true' : 'false';
       document.getElementById('fToken').value = form.public_token || '';

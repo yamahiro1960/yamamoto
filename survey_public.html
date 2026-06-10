@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>アンケート回答</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@500;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;700&display=swap');
 
     :root {
       --primary: #0f766e;
@@ -19,13 +19,14 @@
       --sub: #5f6f7d;
       --danger: #dc2626;
       --ok: #16a34a;
+      --font-main: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
     }
 
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      font-family: var(--font-main);
       background:
         radial-gradient(circle at 8% 10%, var(--bg-ornament) 0, transparent 34%),
         radial-gradient(circle at 92% 5%, #f0e8dd 0, transparent 30%),
@@ -69,7 +70,7 @@
 
     h1 {
       margin: 0;
-      font-family: "Noto Serif JP", "Hiragino Mincho ProN", serif;
+      font-family: var(--font-main);
       font-size: 28px;
       line-height: 1.3;
       letter-spacing: .02em;
@@ -141,7 +142,7 @@
       border-radius: 10px;
       padding: 10px 12px;
       font-size: 14px;
-      font-family: inherit;
+      font-family: var(--font-main);
       outline: none;
       background: #fff;
     }
@@ -223,6 +224,7 @@
       padding: 10px 16px;
       font-size: 14px;
       font-weight: 700;
+      font-family: var(--font-main);
       cursor: pointer;
     }
 
@@ -264,7 +266,7 @@
     }
 
     @media (min-width: 840px) {
-      .split { grid-template-columns: 1fr 1fr; }
+      .split { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -276,12 +278,12 @@
     </section>
 
     <section class="tile">
-      <p class="tile-title">ご案内文章タイル</p>
+      <p class="tile-title">ご案内</p>
       <p class="sub" id="formIntro">読み込み中...</p>
     </section>
 
     <section class="tile">
-      <p class="tile-title">開催要領タイル</p>
+      <p class="tile-title">開催概要</p>
       <dl class="outline-grid">
         <dt>日程</dt><dd id="outlineDate">アンケート案内文に応じてご確認ください。</dd>
         <dt>会場</dt><dd id="outlineVenue">オンラインまたは指定会場</dd>
@@ -291,7 +293,7 @@
     </section>
 
     <section class="tile">
-      <p class="tile-title">プログラムタイル</p>
+      <p class="tile-title">プログラム内容</p>
       <ul class="program-list" id="programList">
         <li>ご挨拶・趣旨説明</li>
         <li>関連トピックの共有</li>
@@ -303,27 +305,31 @@
       <div class="split">
         <section class="tile">
           <p class="tile-title">お申し込みフォーム</p>
-          <div class="field">
-            <label for="respondentName">氏名 <span class="req">必須</span></label>
+          <div class="field" id="fieldNameRow">
+            <label for="respondentName">氏名 <span class="req" id="reqName"></span></label>
             <input id="respondentName" type="text" placeholder="例: 山本 太郎" required />
           </div>
-          <div class="field">
-            <label for="respondentEmail">メールアドレス <span class="req">必須</span></label>
+          <div class="field" id="fieldEmailRow">
+            <label for="respondentEmail">メールアドレス <span class="req" id="reqEmail"></span></label>
             <input id="respondentEmail" type="text" placeholder="例: user@example.com" required />
             <div class="helper">回答受付後、このメールアドレスに確認メールを送信します。</div>
           </div>
-          <div class="field">
-            <label for="respondentPhone">電話番号</label>
+          <div class="field" id="fieldPhoneRow">
+            <label for="respondentPhone">電話番号 <span class="req" id="reqPhone"></span></label>
             <input id="respondentPhone" type="text" placeholder="例: 090-1234-5678" />
           </div>
-          <div class="field" style="margin-bottom:0;">
-            <label for="respondentCompany">会社名・所属</label>
+          <div class="field" id="fieldCompanyRow">
+            <label for="respondentCompany">会社名・所属 <span class="req" id="reqCompany"></span></label>
             <input id="respondentCompany" type="text" placeholder="例: 株式会社〇〇 / 営業部" />
+          </div>
+          <div class="field" id="fieldNoteRow" style="margin-bottom:0;">
+            <label for="respondentNote">備考 <span class="req" id="reqNote"></span></label>
+            <textarea id="respondentNote" placeholder="ご要望や連絡事項があればご記入ください"></textarea>
           </div>
         </section>
 
         <section class="tile">
-          <p class="tile-title">アンケート質問タイル</p>
+          <p class="tile-title">アンケート・質問</p>
           <div class="helper">アンケート回答フォーム</div>
           <div id="dynamicQuestions"></div>
         </section>
@@ -370,6 +376,13 @@
     const submitBtn = document.getElementById('submitBtn');
 
     let currentForm = null;
+    let currentApplicationFields = {
+      name: { visible: true, required: true },
+      email: { visible: true, required: true },
+      phone: { visible: true, required: false },
+      company: { visible: true, required: false },
+      note: { visible: true, required: false },
+    };
 
     function showStatus(message, ok) {
       statusEl.textContent = message;
@@ -407,6 +420,54 @@
     function parseProgram(raw) {
       if (!Array.isArray(raw)) return [];
       return raw.map(v => String(v || '').trim()).filter(Boolean);
+    }
+
+    function normalizeApplicationFields(raw) {
+      const defaults = {
+        name: { visible: true, required: true },
+        email: { visible: true, required: true },
+        phone: { visible: true, required: false },
+        company: { visible: true, required: false },
+        note: { visible: true, required: false },
+      };
+      const source = raw && typeof raw === 'object' ? raw : {};
+      const normalized = { ...defaults };
+      Object.keys(defaults).forEach((key) => {
+        const item = source[key] && typeof source[key] === 'object' ? source[key] : {};
+        const visible = item.visible !== false;
+        const required = !!item.required && visible;
+        normalized[key] = { visible, required };
+      });
+      return normalized;
+    }
+
+    function setFieldRule(key, settings) {
+      const row = document.getElementById(`field${key}Row`);
+      const req = document.getElementById(`req${key}`);
+      const inputId = {
+        Name: 'respondentName',
+        Email: 'respondentEmail',
+        Phone: 'respondentPhone',
+        Company: 'respondentCompany',
+        Note: 'respondentNote',
+      }[key];
+      const input = document.getElementById(inputId);
+
+      row.style.display = settings.visible ? '' : 'none';
+      req.textContent = settings.visible && settings.required ? '必須' : '';
+      input.required = settings.visible && settings.required;
+      if (!settings.visible) {
+        input.value = '';
+      }
+    }
+
+    function applyApplicationFields(raw) {
+      currentApplicationFields = normalizeApplicationFields(raw);
+      setFieldRule('Name', currentApplicationFields.name);
+      setFieldRule('Email', currentApplicationFields.email);
+      setFieldRule('Phone', currentApplicationFields.phone);
+      setFieldRule('Company', currentApplicationFields.company);
+      setFieldRule('Note', currentApplicationFields.note);
     }
 
     function renderOutline(outline) {
@@ -541,6 +602,7 @@
       const questions = parseQuestions(data.questions_json);
       const outline = parseOutline(data.outline_json);
       const program = parseProgram(data.program_json);
+      applyApplicationFields(outline.application_fields);
       if (!questions.length) {
         titleEl.textContent = data.title || 'アンケート';
         introEl.textContent = '設問が設定されていません。管理者に連絡してください。';
@@ -575,42 +637,67 @@
       submitBtn.disabled = true;
       submitBtn.textContent = '送信中...';
 
+      const respondentName = document.getElementById('respondentName').value.trim();
+      const respondentEmail = document.getElementById('respondentEmail').value.trim();
+      const respondentPhone = document.getElementById('respondentPhone').value.trim();
+      const respondentCompany = document.getElementById('respondentCompany').value.trim();
+      const respondentNote = document.getElementById('respondentNote').value.trim();
+
+      if (currentApplicationFields.name.visible && currentApplicationFields.name.required && !respondentName) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '送信する';
+        showStatus('氏名は必須です。', false);
+        return;
+      }
+      if (currentApplicationFields.email.visible && currentApplicationFields.email.required && !respondentEmail) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '送信する';
+        showStatus('メールアドレスは必須です。', false);
+        return;
+      }
+      if (currentApplicationFields.phone.visible && currentApplicationFields.phone.required && !respondentPhone) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '送信する';
+        showStatus('電話番号は必須です。', false);
+        return;
+      }
+      if (currentApplicationFields.company.visible && currentApplicationFields.company.required && !respondentCompany) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '送信する';
+        showStatus('会社名・所属は必須です。', false);
+        return;
+      }
+      if (currentApplicationFields.note.visible && currentApplicationFields.note.required && !respondentNote) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '送信する';
+        showStatus('備考は必須です。', false);
+        return;
+      }
+
+      if (currentApplicationFields.email.visible && respondentEmail && !isValidEmail(respondentEmail)) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '送信する';
+        showStatus('メールアドレス形式が正しくありません。', false);
+        return;
+      }
+
       const payload = {
         form_id: currentForm.id,
-        respondent_name: document.getElementById('respondentName').value.trim(),
-        respondent_email: document.getElementById('respondentEmail').value.trim(),
+        respondent_name: respondentName || '未入力',
+        respondent_email: respondentEmail,
         answers_json: collected.answers,
         client_meta: {
           userAgent: navigator.userAgent,
           language: navigator.language,
           submittedFrom: location.href,
           application: {
-            phone: document.getElementById('respondentPhone').value.trim(),
-            company: document.getElementById('respondentCompany').value.trim(),
+            phone: respondentPhone,
+            company: respondentCompany,
+            note: respondentNote,
+            fields: currentApplicationFields,
           },
         },
       };
-
-      if (!payload.respondent_name) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = '送信する';
-        showStatus('氏名は必須です。', false);
-        return;
-      }
-
-      if (!payload.respondent_email) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = '送信する';
-        showStatus('メールアドレスは必須です。', false);
-        return;
-      }
-
-      if (!isValidEmail(payload.respondent_email)) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = '送信する';
-        showStatus('メールアドレス形式が正しくありません。', false);
-        return;
-      }
 
       const { error } = await db.from('survey_responses').insert([payload]);
 
@@ -628,12 +715,14 @@
 
       let message = 'ご回答ありがとうございました。送信を受け付けました。';
       let ok = true;
-      const mailResult = await sendConfirmationMail(payload.respondent_email, payload.respondent_name, currentForm.title);
-      if (mailResult.sent) {
-        message = 'ご回答ありがとうございました。受付メールを送信しました。';
-      } else if (!mailResult.skipped) {
-        message = '回答は保存されましたが、確認メールの送信に失敗しました。';
-        ok = false;
+      if (payload.respondent_email && isValidEmail(payload.respondent_email)) {
+        const mailResult = await sendConfirmationMail(payload.respondent_email, payload.respondent_name, currentForm.title);
+        if (mailResult.sent) {
+          message = 'ご回答ありがとうございました。受付メールを送信しました。';
+        } else if (!mailResult.skipped) {
+          message = '回答は保存されましたが、確認メールの送信に失敗しました。';
+          ok = false;
+        }
       }
 
       formEl.reset();
