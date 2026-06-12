@@ -823,7 +823,6 @@
         <button class="btn btn-ghost" id="loginBtn">ログイン</button>
         <button class="btn btn-ghost hidden-auth" id="logoutBtn">ログアウト</button>
         <button class="auth-link-btn" id="forgotPasswordBtn" type="button">パスワードを忘れた場合</button>
-        <span class="auth-status" id="authStatus">未ログイン</span>
       </div>
       <button class="btn btn-ghost" id="openSurveyBtn">📝 アンケート調査</button>
       <button class="btn btn-ghost" id="exportBtn">⬇ エクスポート</button>
@@ -1528,9 +1527,6 @@
     document.getElementById('loginBtn').classList.toggle('hidden-auth', isAuthed);
     document.getElementById('logoutBtn').classList.toggle('hidden-auth', !isAuthed);
     document.getElementById('forgotPasswordBtn').classList.toggle('hidden-auth', isAuthed);
-    document.getElementById('authStatus').textContent = isAuthed
-      ? `ログイン中: ${currentSession.user.email}`
-      : '未ログイン';
     document.getElementById('gateAuthStatus').textContent = isAuthed
       ? `ログイン中: ${currentSession.user.email}`
       : '未ログイン';
