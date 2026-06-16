@@ -353,9 +353,13 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>
     const SUPABASE_URL = 'https://vspmaejoftjvooohfqbu.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcG1hZWpvZnRqdm9vb2hmcWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODkxODQsImV4cCI6MjA5Mzg2NTE4NH0.vt33TF7OfmNHOMFUP-_Ch6TESVBPW22d-1W3LKkbrHI';
+    const EMAILJS_PUBLIC_KEY = '4Xt6mEmbuSxVZpy7f';
+    const EMAILJS_SERVICE_ID = 'service_072qk2p';
+    const EMAILJS_TEMPLATE_ID = 'template_42yb5fi';
 
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -527,21 +531,26 @@
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
     }
 
+    function emailSendEnabled() {
+      return !!(EMAILJS_PUBLIC_KEY && EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && window.emailjs);
+    }
+
     async function sendConfirmationMail(toEmail, toName, formTitle, editUrl = '', editDeadline = '開催日の3日前まで', editLimit = '回数無制限') {
+      if (!emailSendEnabled()) {
+        return { sent: false, skipped: true };
+      }
       try {
-        const { data, error } = await db.functions.invoke('send-confirmation-email', {
-          body: {
-            to_email: toEmail,
-            to_name: toName || 'ご回答者様',
-            form_title: formTitle || 'アンケート',
-            submitted_at: new Date().toLocaleString('ja-JP'),
-            form_url: location.href,
-            edit_url: editUrl,
-            edit_deadline: editDeadline,
-            edit_limit: editLimit,
-          },
+        emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+          to_email: toEmail,
+          to_name: toName || 'ご回答者様',
+          form_title: formTitle || 'アンケート',
+          submitted_at: new Date().toLocaleString('ja-JP'),
+          form_url: location.href,
+          edit_url: editUrl,
+          edit_deadline: editDeadline,
+          edit_limit: editLimit,
         });
-        if (error) throw error;
         return { sent: true, skipped: false };
       } catch (error) {
         return { sent: false, skipped: false, error };
