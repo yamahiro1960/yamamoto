@@ -38,8 +38,8 @@ alter table public.survey_responses add column if not exists respondent_email te
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on table public.survey_forms to authenticated;
 grant select on table public.survey_forms to anon;
-grant select on table public.survey_responses to authenticated;
-grant insert on table public.survey_responses to anon, authenticated;
+grant select, insert, update, delete on table public.survey_responses to authenticated;
+grant insert on table public.survey_responses to anon;
 grant usage, select on sequence public.survey_forms_id_seq to authenticated;
 grant usage, select on sequence public.survey_responses_id_seq to anon, authenticated;
 
@@ -107,6 +107,14 @@ with check (
       and coalesce(f.is_deleted, false) = false
   )
 );
+
+-- Admin can delete responses
+drop policy if exists survey_responses_admin_delete on public.survey_responses;
+create policy survey_responses_admin_delete
+on public.survey_responses
+for delete
+to authenticated
+using (true);
 
 -- Optional hardening: anon cannot update/delete responses
 drop policy if exists survey_responses_no_anon_update on public.survey_responses;
