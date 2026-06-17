@@ -825,7 +825,10 @@
         message = '回答内容を修正しました。';
       } else {
         payload.edit_token = generateEditToken();
-        const { error } = await db.from('survey_responses').insert([payload]);
+        const { data: insertedRows, error } = await db
+          .from('survey_responses')
+          .insert([payload])
+          .select('id');
 
         submitBtn.disabled = false;
         submitBtn.textContent = '送信する';
@@ -838,6 +841,8 @@
           showStatus('送信に失敗しました: ' + error.message, false);
           return;
         }
+
+        const insertedId = insertedRows?.[0]?.id ?? null;
 
         if (payload.respondent_email && isValidEmail(payload.respondent_email)) {
           const canEdit = currentEditPolicy.max_edits !== 0;
@@ -854,6 +859,9 @@
           );
           if (mailResult.sent) {
             message = 'ご回答ありがとうございました。受付メールを送信しました。';
+            if (insertedId) {
+              await db.from('survey_responses').update({ email_sent: true }).eq('id', insertedId);
+            }
           } else if (!mailResult.skipped) {
             message = '回答は保存されましたが、確認メールの送信に失敗しました。';
             ok = false;

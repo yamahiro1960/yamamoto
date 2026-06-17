@@ -661,9 +661,13 @@
   <div class="toast" id="toast"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>
     const SUPABASE_URL = 'https://vspmaejoftjvooohfqbu.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzcG1hZWpvZnRqdm9vb2hmcWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyODkxODQsImV4cCI6MjA5Mzg2NTE4NH0.vt33TF7OfmNHOMFUP-_Ch6TESVBPW22d-1W3LKkbrHI';
+    const EMAILJS_PUBLIC_KEY = '4Xt6mEmbuSxVZpy7f';
+    const EMAILJS_SERVICE_ID = 'service_072qk2p';
+    const EMAILJS_TEMPLATE_ID = 'template_42yb5fi';
 
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1216,6 +1220,7 @@
       const form = forms.find(x => x.id === formId);
       if (!form) return;
 
+      currentOpenFormId = formId;
       const questions = parseQuestions(form.questions_json);
       const questionMap = buildQuestionMap(questions);
       responseModalTitle.textContent = `回答一覧: ${form.title || 'アンケート'}`;
@@ -1225,7 +1230,7 @@
 
       const { data, error } = await db
         .from('survey_responses')
-        .select('id,respondent_name,respondent_email,answers_json,submitted_at,client_meta')
+        .select('id,respondent_name,respondent_email,answers_json,submitted_at,client_meta,email_sent,edit_token')
         .eq('form_id', formId)
         .order('submitted_at', { ascending: false });
 
@@ -1242,8 +1247,15 @@
 
       const questionIds = [...questionMap.keys()];
 
+      const unsentCount = list.filter(r => !r.email_sent && r.respondent_email).length;
+      const bulkBtn = unsentCount > 0
+        ? `<button class="btn btn-primary" type="button" id="bulkResendBtn" style="margin-bottom:8px">
+             未送信 ${unsentCount}件に一括再送
+           </button>`
+        : '';
+
       const headerCells = [
-        '削除', 'No.', '受付日時', '氏名', 'メールアドレス', '組織', '電話番号', '人数', '備考',
+        '削除', 'No.', '受付日時', 'メール', '氏名', 'メールアドレス', '組織', '電話番号', '人数', '備考',
         ...questionIds.map(id => escapeHtml(questionMap.get(id)?.label || id)),
       ].map(h => `<th>${h}</th>`).join('');
 
@@ -1251,12 +1263,20 @@
         const profile = getRespondentInfo(item);
         const answers = item.answers_json || {};
         const answerCells = questionIds.map(id => `<td>${escapeHtml(answers[id] ?? '—')}</td>`).join('');
-        return `<tr data-response-id="${item.id}">
+        const emailSent = !!item.email_sent;
+        const hasEmail = !!item.respondent_email;
+        const emailBadge = !hasEmail
+          ? '<span style="color:var(--sub);font-size:12px">—</span>'
+          : emailSent
+            ? '<span style="color:var(--success);font-weight:700">✓送信済</span>'
+            : `<button class="mini mini-warn" type="button" onclick="resendEmail(${item.id})">再送</button>`;
+        return `<tr data-response-id="${item.id}" data-email-sent="${emailSent}" data-email="${escapeHtml(item.respondent_email || '')}" data-name="${escapeHtml(item.respondent_name || '')}" data-edit-token="${escapeHtml(item.edit_token || '')}">
           <td style="white-space:nowrap;text-align:center">
             <button class="mini mini-danger" type="button" onclick="deleteResponse(${item.id}, ${form.id})">削除</button>
           </td>
           <td>${list.length - index}</td>
           <td style="white-space:nowrap">${fmtDateTime(item.submitted_at)}</td>
+          <td style="text-align:center">${emailBadge}</td>
           <td>${escapeHtml(profile.name)}</td>
           <td>${escapeHtml(item.respondent_email || '—')}</td>
           <td>${escapeHtml(profile.organization)}</td>
@@ -1268,12 +1288,17 @@
       }).join('');
 
       responseList.innerHTML = `
+        ${bulkBtn}
         <div class="response-table-wrap">
           <table class="response-table">
             <thead><tr>${headerCells}</tr></thead>
             <tbody>${bodyRows}</tbody>
           </table>
         </div>`;
+
+      if (unsentCount > 0) {
+        document.getElementById('bulkResendBtn').addEventListener('click', () => bulkResend(form));
+      }
     }
 
     async function saveForm() {
@@ -1461,6 +1486,75 @@
       showToast('アンケートを復元しました。');
       await loadForms();
     };
+
+    async function sendMailByEmailJs(toEmail, toName, formTitle, editUrl = '') {
+      try {
+        emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+          to_email: toEmail,
+          to_name: toName || 'ご回答者様',
+          form_title: formTitle || 'アンケート',
+          submitted_at: new Date().toLocaleString('ja-JP'),
+          form_url: '',
+          edit_url: editUrl,
+          edit_deadline: '',
+          edit_limit: '',
+        });
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    window.resendEmail = async function (responseId) {
+      if (!requireAuth()) return;
+      const row = document.querySelector(`tr[data-response-id="${responseId}"]`);
+      if (!row) return;
+      const toEmail = row.dataset.email;
+      const toName = row.dataset.name;
+      if (!toEmail) { showToast('メールアドレスがありません。'); return; }
+
+      const form = forms.find(f => f.id === currentOpenFormId);
+      const formTitle = form?.title || 'アンケート';
+      showToast('送信中...');
+      const ok = await sendMailByEmailJs(toEmail, toName, formTitle);
+      if (!ok) { showToast('送信に失敗しました。'); return; }
+
+      await db.from('survey_responses').update({ email_sent: true }).eq('id', responseId);
+      row.dataset.emailSent = 'true';
+      const cell = row.querySelector('td:nth-child(4)');
+      if (cell) cell.innerHTML = '<span style="color:var(--success);font-weight:700">✓送信済</span>';
+      showToast(`${toName || toEmail} に送信しました。`);
+    };
+
+    async function bulkResend(form) {
+      if (!requireAuth()) return;
+      const rows = [...document.querySelectorAll('tr[data-response-id]')]
+        .filter(r => r.dataset.emailSent === 'false' && r.dataset.email);
+      if (!rows.length) { showToast('未送信の対象者がいません。'); return; }
+      if (!confirm(`未送信 ${rows.length} 件にメールを送信します。実行しますか？`)) return;
+
+      let successCount = 0;
+      for (const row of rows) {
+        const responseId = row.dataset.responseId || row.getAttribute('data-response-id');
+        const toEmail = row.dataset.email;
+        const toName = row.dataset.name;
+        const ok = await sendMailByEmailJs(toEmail, toName, form.title || 'アンケート');
+        if (ok) {
+          await db.from('survey_responses').update({ email_sent: true }).eq('id', responseId);
+          row.dataset.emailSent = 'true';
+          const cell = row.querySelector('td:nth-child(4)');
+          if (cell) cell.innerHTML = '<span style="color:var(--success);font-weight:700">✓送信済</span>';
+          successCount++;
+        }
+        await new Promise(r => setTimeout(r, 300));
+      }
+      showToast(`${successCount} 件送信完了（失敗: ${rows.length - successCount} 件）`);
+      const bulkBtn = document.getElementById('bulkResendBtn');
+      if (bulkBtn) bulkBtn.remove();
+    }
+
+    let currentOpenFormId = null;
 
     window.deleteResponse = async function (responseId, formId) {
       if (!requireAuth()) return;

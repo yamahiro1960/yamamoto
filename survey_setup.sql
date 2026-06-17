@@ -34,6 +34,8 @@ create table if not exists public.survey_responses (
 );
 
 alter table public.survey_responses add column if not exists respondent_email text;
+alter table public.survey_responses add column if not exists email_sent boolean not null default false;
+alter table public.survey_responses add column if not exists edit_token text;
 
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on table public.survey_forms to authenticated;
