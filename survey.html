@@ -650,6 +650,7 @@
       </div>
       <div class="modal-body">
         <div class="sub" id="responseModalSub"></div>
+        <div id="responseModalStats" style="display:none; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px 14px; font-size:14px; color:#166534; font-weight:700;"></div>
         <div class="response-list" id="responseList"></div>
       </div>
       <div class="modal-foot">
@@ -1246,6 +1247,25 @@
       }
 
       const questionIds = [...questionMap.keys()];
+
+      // 参加人数の合計を集計
+      let totalAttendees = 0;
+      let attendeeRowCount = 0;
+      list.forEach(item => {
+        const profile = getRespondentInfo(item);
+        const n = parseInt(profile.attendees, 10);
+        if (!isNaN(n) && n > 0) {
+          totalAttendees += n;
+          attendeeRowCount++;
+        }
+      });
+      const statsEl = document.getElementById('responseModalStats');
+      if (attendeeRowCount > 0) {
+        statsEl.textContent = `参加人数合計: ${totalAttendees} 名（${list.length} 件の回答中 ${attendeeRowCount} 件に人数記載）`;
+        statsEl.style.display = 'block';
+      } else {
+        statsEl.style.display = 'none';
+      }
 
       const unsentCount = list.filter(r => !r.email_sent && r.respondent_email).length;
       const bulkBtn = unsentCount > 0
