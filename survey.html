@@ -380,76 +380,42 @@
       display: grid;
       gap: 14px;
     }
-    .response-list {
-      display: grid;
-      gap: 12px;
+    .response-table-wrap {
+      overflow-x: auto;
     }
-    .response-card {
-      border: 1px solid var(--border);
-      border-radius: 12px;
+    .response-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      min-width: 700px;
+    }
+    .response-table thead th {
       background: #f8fafc;
-      padding: 12px;
-      display: grid;
-      gap: 8px;
-    }
-    .response-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .response-meta {
-      font-size: 12px;
-      color: var(--sub);
-    }
-    .response-items {
-      display: grid;
-      gap: 8px;
-    }
-    .response-item {
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 8px 10px;
-    }
-    .response-item-label {
+      border-bottom: 2px solid var(--border);
+      border-right: 1px solid var(--border);
+      padding: 9px 10px;
+      text-align: left;
+      white-space: nowrap;
       font-size: 12px;
       color: var(--sub);
       font-weight: 700;
-      margin-bottom: 3px;
+      position: sticky;
+      top: 0;
+      z-index: 2;
     }
-    .response-item-value {
-      font-size: 14px;
+    .response-table thead th:last-child { border-right: none; }
+    .response-table tbody td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      vertical-align: top;
       white-space: pre-wrap;
       word-break: break-word;
+      max-width: 220px;
     }
-    .response-profile {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-    .response-profile-item {
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 8px 10px;
-    }
-    .response-profile-item.full {
-      grid-column: 1 / -1;
-    }
-    .response-profile-label {
-      font-size: 12px;
-      color: var(--sub);
-      font-weight: 700;
-      margin-bottom: 3px;
-    }
-    .response-profile-value {
-      font-size: 14px;
-      color: var(--text);
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
+    .response-table tbody td:last-child { border-right: none; }
+    .response-table tbody tr:hover { background: #f0f7ff; }
+    .response-table tbody tr:last-child td { border-bottom: none; }
     .field {
       display: flex;
       flex-direction: column;
@@ -1043,15 +1009,8 @@
       }).join('');
     }
 
-    function renderAnswerValue(questionMap, questionId, value) {
-      const question = questionMap.get(questionId) || { label: questionId, description: '' };
-      const text = value == null || value === '' ? '—' : String(value);
-      return `
-        <div class="response-item">
-          <div class="response-item-label">${question.label}</div>
-          ${question.description ? `<div class="response-item-description" style="font-size:12px;color:var(--sub);margin-bottom:4px;white-space:pre-wrap;">${question.description}</div>` : ''}
-          <div class="response-item-value">${text}</div>
-        </div>`;
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     function buildQuestionMap(questions) {
@@ -1281,43 +1240,37 @@
         return;
       }
 
-      responseList.innerHTML = list.map((item, index) => {
-        const answers = item.answers_json || {};
+      const questionIds = [...questionMap.keys()];
+
+      const headerCells = [
+        'No.', '受付日時', '氏名', 'メールアドレス', '組織', '電話番号', '人数', '備考',
+        ...questionIds.map(id => escapeHtml(questionMap.get(id)?.label || id)),
+      ].map(h => `<th>${h}</th>`).join('');
+
+      const bodyRows = list.map((item, index) => {
         const profile = getRespondentInfo(item);
-        const itemsHtml = Object.entries(answers).map(([questionId, value]) => renderAnswerValue(questionMap, questionId, value)).join('');
-        return `
-          <div class="response-card">
-            <div class="response-head">
-              <strong>回答 ${list.length - index}</strong>
-              <span class="response-meta">${fmtDateTime(item.submitted_at)}${item.respondent_email ? ` / ${item.respondent_email}` : ''}</span>
-            </div>
-            <div class="response-profile">
-              <div class="response-profile-item">
-                <div class="response-profile-label">組織</div>
-                <div class="response-profile-value">${profile.organization}</div>
-              </div>
-              <div class="response-profile-item">
-                <div class="response-profile-label">氏名</div>
-                <div class="response-profile-value">${profile.name}</div>
-              </div>
-              <div class="response-profile-item">
-                <div class="response-profile-label">人数</div>
-                <div class="response-profile-value">${profile.attendees}</div>
-              </div>
-              <div class="response-profile-item">
-                <div class="response-profile-label">電話番号</div>
-                <div class="response-profile-value">${profile.phone}</div>
-              </div>
-              <div class="response-profile-item full">
-                <div class="response-profile-label">備考</div>
-                <div class="response-profile-value">${profile.note}</div>
-              </div>
-            </div>
-            <div class="response-items">
-              ${itemsHtml || '<div class="empty" style="margin:0">回答内容がありません。</div>'}
-            </div>
-          </div>`;
+        const answers = item.answers_json || {};
+        const answerCells = questionIds.map(id => `<td>${escapeHtml(answers[id] ?? '—')}</td>`).join('');
+        return `<tr>
+          <td>${list.length - index}</td>
+          <td style="white-space:nowrap">${fmtDateTime(item.submitted_at)}</td>
+          <td>${escapeHtml(profile.name)}</td>
+          <td>${escapeHtml(item.respondent_email || '—')}</td>
+          <td>${escapeHtml(profile.organization)}</td>
+          <td style="white-space:nowrap">${escapeHtml(profile.phone)}</td>
+          <td>${escapeHtml(profile.attendees)}</td>
+          <td>${escapeHtml(profile.note)}</td>
+          ${answerCells}
+        </tr>`;
       }).join('');
+
+      responseList.innerHTML = `
+        <div class="response-table-wrap">
+          <table class="response-table">
+            <thead><tr>${headerCells}</tr></thead>
+            <tbody>${bodyRows}</tbody>
+          </table>
+        </div>`;
     }
 
     async function saveForm() {
