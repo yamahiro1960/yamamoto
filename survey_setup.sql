@@ -110,6 +110,15 @@ with check (
   )
 );
 
+-- Admin can update responses (e.g. email_sent flag)
+drop policy if exists survey_responses_admin_update on public.survey_responses;
+create policy survey_responses_admin_update
+on public.survey_responses
+for update
+to authenticated
+using (true)
+with check (true);
+
 -- Admin can delete responses
 drop policy if exists survey_responses_admin_delete on public.survey_responses;
 create policy survey_responses_admin_delete
