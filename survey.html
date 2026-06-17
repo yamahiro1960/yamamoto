@@ -1243,7 +1243,7 @@
       const questionIds = [...questionMap.keys()];
 
       const headerCells = [
-        'No.', '受付日時', '氏名', 'メールアドレス', '組織', '電話番号', '人数', '備考',
+        '削除', 'No.', '受付日時', '氏名', 'メールアドレス', '組織', '電話番号', '人数', '備考',
         ...questionIds.map(id => escapeHtml(questionMap.get(id)?.label || id)),
       ].map(h => `<th>${h}</th>`).join('');
 
@@ -1251,7 +1251,10 @@
         const profile = getRespondentInfo(item);
         const answers = item.answers_json || {};
         const answerCells = questionIds.map(id => `<td>${escapeHtml(answers[id] ?? '—')}</td>`).join('');
-        return `<tr>
+        return `<tr data-response-id="${item.id}">
+          <td style="white-space:nowrap;text-align:center">
+            <button class="mini mini-danger" type="button" onclick="deleteResponse(${item.id}, ${form.id})">削除</button>
+          </td>
           <td>${list.length - index}</td>
           <td style="white-space:nowrap">${fmtDateTime(item.submitted_at)}</td>
           <td>${escapeHtml(profile.name)}</td>
@@ -1457,6 +1460,27 @@
 
       showToast('アンケートを復元しました。');
       await loadForms();
+    };
+
+    window.deleteResponse = async function (responseId, formId) {
+      if (!requireAuth()) return;
+      if (!(await ensureValidSession())) return;
+      if (!confirm('この回答を削除します。元に戻せません。実行しますか？')) return;
+
+      const { error } = await db.from('survey_responses').delete().eq('id', responseId);
+      if (error) {
+        showToast('削除に失敗: ' + error.message);
+        return;
+      }
+
+      // 行をDOMから即時削除
+      const row = document.querySelector(`tr[data-response-id="${responseId}"]`);
+      if (row) row.remove();
+
+      // 件数カウントを更新
+      if (responseCounts[formId]) responseCounts[formId]--;
+      renderRows();
+      showToast('回答を削除しました。');
     };
 
     window.hardDeleteForm = async function (id) {
